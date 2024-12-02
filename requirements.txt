@@ -1,0 +1,17 @@
+astropy
+numpy
+pandas
+scipy
+matplotlib
+lightgbm
+scikit-learn
+sep
+skimage
+streamlit
+requests
+django
+djangorestframework
+pillow
+wandb
+astroplan
+joblib
