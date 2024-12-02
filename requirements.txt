@@ -6,7 +6,7 @@ matplotlib
 lightgbm
 scikit-learn
 sep
-skimage
+scikit-image
 streamlit
 requests
 django
