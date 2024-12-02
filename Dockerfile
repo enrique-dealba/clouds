@@ -20,12 +20,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy project
 COPY cloudynight/ /app/cloudynight/
-COPY models/ /app/models/
-COPY data/ /app/data/
 COPY scripts/ /app/scripts/
 COPY frontend/ /app/frontend/
-COPY tests/ /app/tests/
-COPY docs/ /app/docs/
 
 # Make start.sh executable
 RUN chmod +x /app/scripts/start.sh
