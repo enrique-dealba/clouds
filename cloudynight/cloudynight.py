@@ -491,23 +491,9 @@ class AllskyCamera:
         return_median=False,
         convolve=None,
         gaussian_blur=None,
-        filename="mask.fits",
+        filename=None,
     ):
-        """Generate an image mask to cover the horizon.
-
-        :param mask_gt: float, mask pixel values greater than this value
-        :param mask_lt: float, mask pixel values less than this value
-        :param return_median: boolean, if True, return simply the median of all
-                              images
-        :param convolve: int or None, convolve mask image for additional
-                         smoothing, defines kernel edge length
-        :param gaussian_blur: int or None, apply Gaussian filter to blur small
-                              features before applying thresholds, defines
-                              kernel edge length
-        :param filename: mask file name
-
-        :return: mask array (0 is masked, 1 is not masked)
-        """
+        """Generate an image mask to define analysis regions."""
         mask = np.median([img.data for img in self.imgdata], axis=0)
 
         conf.logger.info(
@@ -533,7 +519,6 @@ class AllskyCamera:
                     conf.logger.info(
                         ("  mask pixels with values less " "than {}.").format(mask_lt)
                     )
-
                     newmask[mask > mask_lt] = 0
                 mask = newmask
 
@@ -549,16 +534,18 @@ class AllskyCamera:
         mask = mask + 1
         mask[mask == 2] = 0
 
-        mask = AllskyImage("mask", mask, {})
-        mask.write_fits(os.path.join(conf.DIR_ARCHIVE, filename))
+        mask_img = AllskyImage("mask", mask, {})
 
-        conf.logger.info(
-            "  mask file written to {}.".format(
-                os.path.join(conf.DIR_ARCHIVE, filename)
+        # Only save to disk if filename is provided
+        if filename:
+            mask_img.write_fits(os.path.join(conf.DIR_ARCHIVE, filename))
+            conf.logger.info(
+                "  mask file written to {}.".format(
+                    os.path.join(conf.DIR_ARCHIVE, filename)
+                )
             )
-        )
 
-        return mask
+        return mask_img
 
     def read_mask(self, filename):
         """Read in mask FITS file."""

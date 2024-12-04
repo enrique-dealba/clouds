@@ -16,6 +16,7 @@ class ImageProcessor:
     def __init__(self):
         self.camera = AllskyCamera()
         self.mask: Optional[AllskyImage] = None
+        self.mask_data: Optional[np.ndarray] = None
 
     def load_fits_file(
         self, uploaded_file
@@ -75,9 +76,10 @@ class ImageProcessor:
                 mask_lt=3400,
                 gaussian_blur=10,
                 convolve=20,
-                filename="processed_mask.fits",
+                filename=None,  # Don't save to disk
             )
             self.mask = mask
+            self.mask_data = mask.data  # Store the mask data
             return mask
         except Exception as e:
             st.error(f"Error generating mask: {str(e)}")
@@ -85,12 +87,15 @@ class ImageProcessor:
 
     def create_subregions(self) -> bool:
         """Create and initialize subregions using mask."""
-        if self.mask is None:
+        if self.mask is None or self.mask_data is None:
             st.error("Mask must be generated before creating subregions")
             return False
 
         try:
-            self.camera.read_mask(filename="processed_mask.fits")
+            # Create an AllskyImage instance directly from the mask data
+            self.camera.maskdata = AllskyImage(
+                filename="mask", data=self.mask_data, header={}
+            )
             self.camera.generate_subregions()
             return True
         except Exception as e:
@@ -171,7 +176,7 @@ def main():
     # Display sample image
     st.header("Sample Image")
     sample_buf = visualize_image(images[0].data, "Sample Original Image")
-    st.image(sample_buf, use_column_width=True)
+    st.image(sample_buf, use_container_width=True)
 
     # Mask Generation
     st.header("1. Mask Generation")
@@ -179,6 +184,7 @@ def main():
         mask_data, _ = processor.load_fits_file(optional_mask)
         if mask_data is not None:
             processor.mask = AllskyImage("uploaded_mask", mask_data, {})
+            processor.mask_data = mask_data  # Store the mask data
             st.success("Using uploaded mask")
     else:
         if st.button("Generate Mask from Images"):
@@ -186,7 +192,7 @@ def main():
             if mask:
                 st.success("Mask generated successfully")
                 mask_buf = visualize_image(mask.data, "Generated Mask")
-                st.image(mask_buf, use_column_width=True)
+                st.image(mask_buf, use_container_width=True)
 
     # Subregion Creation
     if processor.mask is not None:
@@ -200,7 +206,7 @@ def main():
                 overlay_buf = visualize_image(
                     images[0].data, "Subregions Overlay", overlay=overlay
                 )
-                st.image(overlay_buf, use_column_width=True)
+                st.image(overlay_buf, use_container_width=True)
 
                 # Feature Extraction
                 st.header("3. Feature Extraction")
@@ -223,7 +229,7 @@ def main():
                                     overlay=overlay,
                                     overlay_cmap=params[1],
                                 )
-                                st.image(overlay_buf, use_column_width=True)
+                                st.image(overlay_buf, use_container_width=True)
 
 
 if __name__ == "__main__":
