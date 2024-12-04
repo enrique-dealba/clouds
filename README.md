@@ -24,3 +24,9 @@ docker run --gpus all cloudynight:latest train \
 ```bash
 docker run -p 8888:8888 cloudynight:latest streamlit
 ```
+
+### Running PyTests
+
+```bash
+docker run cloudynight:latest tests
+```
