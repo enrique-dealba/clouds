@@ -17,11 +17,13 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt /app/
 RUN pip install --upgrade pip
 RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install pytest pytest-cov
 
 # Copy project
 COPY cloudynight/ /app/cloudynight/
 COPY scripts/ /app/scripts/
 COPY frontend/ /app/frontend/
+COPY tests/ /app/tests/
 
 # Make start.sh executable
 RUN chmod +x /app/scripts/start.sh

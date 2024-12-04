@@ -22,6 +22,10 @@ case "$1" in
         shift
         python /app/scripts/train_model.py "$@"
         ;;
+    tests)
+        shift
+        pytest /app/tests/ -v --cov=cloudynight "$@"
+        ;;
     diagnostics)
         python /app/scripts/run_diagnostics.py
         ;;
