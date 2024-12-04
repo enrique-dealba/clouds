@@ -57,16 +57,35 @@ class ImageProcessor:
     def process_multiple_images(self, uploaded_files) -> List[AllskyImage]:
         """Process multiple FITS files into AllskyImage objects."""
         images = []
+        expected_shape = None
+
         for file in uploaded_files:
             data, header = self.load_fits_file(file)
             if data is not None and header is not None:
-                images.append(
-                    AllskyImage(
-                        filename=file.name,  # Use the name directly from UploadedFile
-                        data=data,
-                        header=header,
-                    )
+                img = AllskyImage(
+                    filename=file.name,
+                    data=data,
+                    header=header,
                 )
+                try:
+                    img.crop_image()
+                except ValueError as ve:
+                    st.warning(f"Skipping {file.name}: {ve}")
+                    continue
+
+                # Set the expected shape based on the first valid image
+                if expected_shape is None:
+                    expected_shape = img.data.shape
+                else:
+                    if img.data.shape != expected_shape:
+                        st.warning(
+                            f"Skipping {file.name}: Cropped image shape {img.data.shape} "
+                            f"does not match expected shape {expected_shape}."
+                        )
+                        continue
+
+                images.append(img)
+
         return images
 
     def generate_mask(self, images: List[AllskyImage]) -> Optional[AllskyImage]:

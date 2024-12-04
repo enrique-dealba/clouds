@@ -105,6 +105,12 @@ class AllskyImage:
                 "Subregions must be initialized before creating overlay"
             )
 
+        # Ensure the mask shape matches the current image shape
+        if self.maskdata is not None and self.maskdata.data.shape != self.data.shape:
+            raise ValueError(
+                f"Mask shape {self.maskdata.data.shape} does not match image shape {self.data.shape}."
+            )
+
         map = np.zeros(self.data.shape)
 
         # If regions is None, create a list of True values
@@ -112,6 +118,11 @@ class AllskyImage:
             regions = [True] * len(self.subregions)
 
         for i, sub in enumerate(self.subregions):
+            if sub.shape != self.data.shape:
+                raise ValueError(
+                    f"Subregion {i} shape {sub.shape} does not match image shape {self.data.shape}."
+                )
+
             if overlaytype == "srcdens":
                 map += sub * self.features["srcdens"][i]
             elif overlaytype == "bkgmedian":
@@ -208,10 +219,18 @@ class AllskyImage:
         """Crop this `~AllskyImage` instance to the ranges defined by
         ``conf.X_CROPRANGE`` and ``conf.Y_CROPRANGE``.
         """
-        self.data = self.data[
-            conf.Y_CROPRANGE[0] : conf.Y_CROPRANGE[1],
-            conf.X_CROPRANGE[0] : conf.X_CROPRANGE[1],
-        ]
+        y_size, x_size = self.data.shape
+        y_start, y_end = conf.Y_CROPRANGE
+        x_start, x_end = conf.X_CROPRANGE
+
+        # Check if the image is large enough for cropping
+        if y_end > y_size or x_end > x_size:
+            raise ValueError(
+                f"Image size ({y_size}, {x_size}) is smaller than crop range "
+                f"Y: {conf.Y_CROPRANGE}, X: {conf.X_CROPRANGE}."
+            )
+
+        self.data = self.data[y_start:y_end, x_start:x_end]
 
     def extract_features(self, subregions, mask=None):
         """Extract image features for each subregion. Image should be cropped
@@ -594,6 +613,9 @@ class AllskyCamera:
         """Create subregions array. This array consists of N_subregions
         arrays, each with the same dimensions as self.maskdata.
         """
+        if self.maskdata is None:
+            raise AllskyImageError("Mask data is not initialized.")
+
         shape = np.array(self.maskdata.data.shape)
         center_coo = shape / 2
         radius_borders = np.linspace(0, min(shape) / 2, conf.N_RINGS + 2)
