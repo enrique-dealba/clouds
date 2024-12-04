@@ -92,18 +92,27 @@ class ImageProcessor:
             return False
 
         try:
-            # Create an AllskyImage instance directly from the mask data
             self.camera.maskdata = AllskyImage(
                 filename="mask", data=self.mask_data, header={}
             )
+
             num_regions = self.camera.generate_subregions()
-            st.info(f"Created {num_regions} subregions successfully")
+            st.success(f"Successfully created {num_regions} subregions")
+
+            # Validate subregions were created properly
+            if not self.camera.subregions.any():
+                st.warning("Subregions were created but appear to be empty")
+                return False
+
             return True
+
         except Exception as e:
             import traceback
 
-            st.error(f"Error creating subregions: {str(e)}")
-            st.error(traceback.format_exc())  # This will show the full traceback
+            st.error("Error during subregion creation:")
+            st.error(str(e))
+            # Print traceback for debugging
+            st.error(traceback.format_exc())
             return False
 
     def extract_features(self, image: AllskyImage) -> Optional[pd.DataFrame]:

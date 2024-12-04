@@ -593,44 +593,45 @@ class AllskyCamera:
 
         # build templates for radius and azimuth
         y, x = np.indices(shape)
-        # Change np.int to np.int64
         r_map = np.sqrt((x - center_coo[0]) ** 2 + (y - center_coo[1]) ** 2).astype(
             np.int64
         )
         az_map = np.arctan2(y - center_coo[1], x - center_coo[0])
 
         # subregion maps
-        # Change dtype=np.bool to dtype=bool
         subregions = np.zeros([n_subregions, *shape], dtype=bool)
 
-        # polygons around each source region in original image dimensions
+        # Store polygons as a list instead of trying to convert to numpy array
         polygons = []
 
         for i in range(conf.N_RINGS + 1):
             for j in range(conf.N_RINGSEGMENTS):
                 if i == 0 and j == 0:
                     subregions[0][(r_map < radius_borders[i + 1])] = True
-                    # find contours
                     contours = measure.find_contours(subregions[0], 0.5)
+                    if len(contours) > 0:  # Add check for empty contours
+                        polygons.append(
+                            (contours[0][:, 0][::10], contours[0][:, 1][::10])
+                        )
                 elif i == 0 and j > 0:
                     break
                 else:
-                    subregions[(i - 1) * conf.N_RINGSEGMENTS + j + 1][
-                        (
-                            (r_map > radius_borders[i])
-                            & (r_map < radius_borders[i + 1])
-                            & (az_map > azimuth_borders[j])
-                            & (az_map < azimuth_borders[j + 1])
-                        )
+                    current_region = (i - 1) * conf.N_RINGSEGMENTS + j + 1
+                    subregions[current_region][
+                        (r_map > radius_borders[i])
+                        & (r_map < radius_borders[i + 1])
+                        & (az_map > azimuth_borders[j])
+                        & (az_map < azimuth_borders[j + 1])
                     ] = True
-                    contours = measure.find_contours(
-                        subregions[(i - 1) * conf.N_RINGSEGMENTS + j + 1], 0.5
-                    )
-                # downscale number of vertices
-                polygons.append((contours[0][:, 0][::10], contours[0][:, 1][::10]))
+
+                    contours = measure.find_contours(subregions[current_region], 0.5)
+                    if len(contours) > 0:  # Add check for empty contours
+                        polygons.append(
+                            (contours[0][:, 0][::10], contours[0][:, 1][::10])
+                        )
 
         self.subregions = subregions
-        self.polygons = np.array(polygons)
+        self.polygons = polygons  # Store as list instead of numpy array
 
         return len(self.subregions)
 
