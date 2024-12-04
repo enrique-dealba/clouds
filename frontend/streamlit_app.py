@@ -1,6 +1,5 @@
 import io
-from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -19,33 +18,52 @@ class ImageProcessor:
         self.mask: Optional[AllskyImage] = None
 
     def load_fits_file(
-        self, file_path: Union[str, Path]
+        self, uploaded_file
     ) -> Tuple[Optional[np.ndarray], Optional[Dict]]:
         """Load FITS file safely and return data and header."""
         try:
-            with fits.open(file_path) as hdul:
+            # Read the uploaded file's bytes
+            file_bytes = uploaded_file.read()
+
+            # For bz2 files, decompress first
+            if uploaded_file.name.endswith(".bz2"):
+                import bz2
+
+                file_bytes = bz2.decompress(file_bytes)
+
+            # Create file-like object in memory
+            file_buffer = io.BytesIO(file_bytes)
+
+            with fits.open(file_buffer) as hdul:
                 data = hdul[0].data.astype(np.float64)
                 header = hdul[0].header
 
                 if data is None or np.all(data == 0):
-                    st.error(f"File {file_path} appears to be empty")
+                    st.error(f"File {uploaded_file.name} appears to be empty")
                     return None, None
 
                 return data, header
-        except Exception as e:
-            st.error(f"Error loading {file_path}: {str(e)}")
-            return None, None
 
-    def process_multiple_images(
-        self, files: List[Union[str, Path]]
-    ) -> List[AllskyImage]:
+        except Exception as e:
+            st.error(f"Error loading {uploaded_file.name}: {str(e)}")
+            return None, None
+        finally:
+            # Reset the file buffer for potential reuse
+            if "file_buffer" in locals():
+                file_buffer.close()
+
+    def process_multiple_images(self, uploaded_files) -> List[AllskyImage]:
         """Process multiple FITS files into AllskyImage objects."""
         images = []
-        for file in files:
+        for file in uploaded_files:
             data, header = self.load_fits_file(file)
             if data is not None and header is not None:
                 images.append(
-                    AllskyImage(filename=Path(file).name, data=data, header=header)
+                    AllskyImage(
+                        filename=file.name,  # Use the name directly from UploadedFile
+                        data=data,
+                        header=header,
+                    )
                 )
         return images
 
