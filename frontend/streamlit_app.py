@@ -96,10 +96,14 @@ class ImageProcessor:
             self.camera.maskdata = AllskyImage(
                 filename="mask", data=self.mask_data, header={}
             )
-            self.camera.generate_subregions()
+            num_regions = self.camera.generate_subregions()
+            st.info(f"Created {num_regions} subregions successfully")
             return True
         except Exception as e:
+            import traceback
+
             st.error(f"Error creating subregions: {str(e)}")
+            st.error(traceback.format_exc())  # This will show the full traceback
             return False
 
     def extract_features(self, image: AllskyImage) -> Optional[pd.DataFrame]:

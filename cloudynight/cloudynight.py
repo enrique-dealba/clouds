@@ -585,7 +585,6 @@ class AllskyCamera:
         """Create subregions array. This array consists of N_subregions
         arrays, each with the same dimensions as self.maskdata.
         """
-
         shape = np.array(self.maskdata.data.shape)
         center_coo = shape / 2
         radius_borders = np.linspace(0, min(shape) / 2, conf.N_RINGS + 2)
@@ -594,13 +593,15 @@ class AllskyCamera:
 
         # build templates for radius and azimuth
         y, x = np.indices(shape)
+        # Change np.int to np.int64
         r_map = np.sqrt((x - center_coo[0]) ** 2 + (y - center_coo[1]) ** 2).astype(
-            np.int
+            np.int64
         )
         az_map = np.arctan2(y - center_coo[1], x - center_coo[0])
 
         # subregion maps
-        subregions = np.zeros([n_subregions, *shape], dtype=np.bool)
+        # Change dtype=np.bool to dtype=bool
+        subregions = np.zeros([n_subregions, *shape], dtype=bool)
 
         # polygons around each source region in original image dimensions
         polygons = []
