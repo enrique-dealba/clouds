@@ -63,8 +63,8 @@ class ConfExample:
         # image crop ranges (ROI must be square)
         # trs self.X_CROPRANGE = (220, 1190)
         # trs self.Y_CROPRANGE = (0, 960)
-        self.X_CROPRANGE = (0, 2080)
-        self.Y_CROPRANGE = (170, 2860)
+        self.X_CROPRANGE = (0, 1392)  # Adjusted to image width
+        self.Y_CROPRANGE = (0, 1040)  # Adjusted to image height
 
         # define subregion properties
         self.N_RINGS = 4

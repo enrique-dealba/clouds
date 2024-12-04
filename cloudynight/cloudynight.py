@@ -223,11 +223,21 @@ class AllskyImage:
         y_start, y_end = conf.Y_CROPRANGE
         x_start, x_end = conf.X_CROPRANGE
 
-        # Check if the image is large enough for cropping
-        if y_end > y_size or x_end > x_size:
+        # Adjust crop ranges if image is smaller than expected
+        original_crop = (y_start, y_end, x_start, x_end)
+        y_end = min(y_end, y_size)
+        x_end = min(x_end, x_size)
+
+        adjusted_crop = (y_start, y_end, x_start, x_end)
+
+        conf.logger.info(
+            f"Cropping image '{self.filename}': Original crop Y: {original_crop[:2]}, X: {original_crop[2:]}; "
+            f"Adjusted crop Y: {adjusted_crop[:2]}, X: {adjusted_crop[2:]}."
+        )
+
+        if y_start >= y_end or x_start >= x_end:
             raise ValueError(
-                f"Image size ({y_size}, {x_size}) is smaller than crop range "
-                f"Y: {conf.Y_CROPRANGE}, X: {conf.X_CROPRANGE}."
+                f"Invalid crop range after adjustment: Y: ({y_start}, {y_end}), X: ({x_start}, {x_end})."
             )
 
         self.data = self.data[y_start:y_end, x_start:x_end]
