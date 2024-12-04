@@ -1,153 +1,215 @@
 import io
+from pathlib import Path
+from typing import Dict, List, Optional, Tuple, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import streamlit as st
 from astropy.io import fits
 
 from cloudynight import AllskyCamera, AllskyImage
 
 
-def load_fits(file):
-    """Load FITS file and return data and header."""
-    with fits.open(file) as hdul:
-        data = hdul[0].data.astype(np.float64)
-        header = hdul[0].header
-    return data, header
+class ImageProcessor:
+    """Handles processing of astronomical images for cloud detection."""
 
+    def __init__(self):
+        self.camera = AllskyCamera()
+        self.mask: Optional[AllskyImage] = None
 
-def display_image(data, title="Image"):
-    """Display image using matplotlib and return as Streamlit image."""
-    fig, ax = plt.subplots(figsize=(6, 6))
-    ax.imshow(data, origin="lower", cmap="gray")
-    ax.set_title(title)
-    ax.axis("off")
-    buf = io.BytesIO()
-    plt.savefig(buf, format="png")
-    plt.close(fig)
-    return buf
+    def load_fits_file(
+        self, file_path: Union[str, Path]
+    ) -> Tuple[Optional[np.ndarray], Optional[Dict]]:
+        """Load FITS file safely and return data and header."""
+        try:
+            with fits.open(file_path) as hdul:
+                data = hdul[0].data.astype(np.float64)
+                header = hdul[0].header
 
+                if data is None or np.all(data == 0):
+                    st.error(f"File {file_path} appears to be empty")
+                    return None, None
 
-def main():
-    st.title("Cloud Detection")
-    st.sidebar.header("Upload and Process Image")
+                return data, header
+        except Exception as e:
+            st.error(f"Error loading {file_path}: {str(e)}")
+            return None, None
 
-    uploaded_file = st.sidebar.file_uploader(
-        "Choose a FITS file", type=["fits", "fits.bz2"]
-    )
+    def process_multiple_images(
+        self, files: List[Union[str, Path]]
+    ) -> List[AllskyImage]:
+        """Process multiple FITS files into AllskyImage objects."""
+        images = []
+        for file in files:
+            data, header = self.load_fits_file(file)
+            if data is not None and header is not None:
+                images.append(
+                    AllskyImage(filename=Path(file).name, data=data, header=header)
+                )
+        return images
 
-    if uploaded_file is not None:
-        st.sidebar.success("File uploaded successfully!")
-        # Load FITS data
-        data, header = load_fits(uploaded_file)
-
-        # Display Original Image
-        st.header("Original Image")
-        original_image = display_image(data, title="Original FITS Image")
-        st.image(original_image, use_column_width=True)
-
-        # Initialize AllskyImage and AllskyCamera
-        image = AllskyImage(filename=uploaded_file.name, data=data, header=header)
-        cam = AllskyCamera()
-
-        # Option to generate mask from the single image
-        st.subheader("1. Generate Mask")
-        if st.button("Generate Mask from This Image"):
-            # For single image, use the image itself to create mask
-            mask = cam.generate_mask(
-                mask_gt=None,
+    def generate_mask(self, images: List[AllskyImage]) -> Optional[AllskyImage]:
+        """Generate mask from multiple images."""
+        self.camera.imgdata = images
+        try:
+            mask = self.camera.generate_mask(
                 mask_lt=3400,
                 gaussian_blur=10,
                 convolve=20,
-                filename="mask_single.fits",
+                filename="processed_mask.fits",
             )
-            st.success("Mask generated successfully!")
-            # Display Mask
-            st.header("Mask Image")
-            mask_image = display_image(mask.data, title="Generated Mask")
-            st.image(mask_image, use_column_width=True)
-        else:
-            st.info(
-                "Click the button above to generate a mask from the uploaded image."
-            )
+            self.mask = mask
+            return mask
+        except Exception as e:
+            st.error(f"Error generating mask: {str(e)}")
+            return None
 
-        # Proceed only if mask is generated
-        if "mask" in locals():
-            # Option to create subregions
-            st.subheader("2. Create Subregions")
-            if st.button("Create Subregions"):
-                cam.read_mask(filename="mask_single.fits")
-                cam.generate_subregions()
-                st.success("Subregions created successfully!")
-                # Display Subregions Overlay
-                st.header("Subregions Overlay")
-                overlay = image.create_overlay(overlaytype="subregions")
-                fig, ax = plt.subplots(figsize=(6, 6))
-                ax.imshow(data, origin="lower", cmap="gray", alpha=0.5)
-                ax.imshow(overlay, origin="lower", cmap="Oranges", alpha=0.3)
-                ax.set_title("Subregions Overlay")
-                ax.axis("off")
-                buf = io.BytesIO()
-                plt.savefig(buf, format="png")
-                plt.close(fig)
-                st.image(buf, use_column_width=True)
-        else:
-            st.warning("Please generate a mask first.")
+    def create_subregions(self) -> bool:
+        """Create and initialize subregions using mask."""
+        if self.mask is None:
+            st.error("Mask must be generated before creating subregions")
+            return False
 
-        # Proceed only if subregions are created
-        if "subregions" in cam.__dict__ and cam.subregions is not None:
-            st.subheader("3. Extract Features")
-            if st.button("Extract Features"):
-                cam.imgdata = [image]  # Process the single image
-                cam.extract_features(cam.subregions, mask=mask.data)
-                st.success("Features extracted successfully!")
+        try:
+            self.camera.read_mask(filename="processed_mask.fits")
+            self.camera.generate_subregions()
+            return True
+        except Exception as e:
+            st.error(f"Error creating subregions: {str(e)}")
+            return False
 
-                # Display Features
-                st.header("Extracted Features")
-                features = cam.imgdata[0].features
-                feature_df = {
+    def extract_features(self, image: AllskyImage) -> Optional[pd.DataFrame]:
+        """Extract features from an image using generated subregions."""
+        try:
+            self.camera.imgdata = [image]
+            self.camera.extract_features(self.camera.subregions, mask=self.mask.data)
+
+            features = self.camera.imgdata[0].features
+            return pd.DataFrame(
+                {
                     "Subregion": list(range(len(features["srcdens"]))),
                     "Source Density": features["srcdens"],
                     "Background Median": features["bkgmedian"],
                     "Background Mean": features["bkgmean"],
                     "Background Std": features["bkgstd"],
                 }
-                import pandas as pd
+            )
+        except Exception as e:
+            st.error(f"Error extracting features: {str(e)}")
+            return None
 
-                df = pd.DataFrame(feature_df)
-                st.dataframe(df)
 
-                # Visualize Source Density Overlay
-                st.subheader("Source Density Overlay")
-                sourcedens_overlay = image.create_overlay(overlaytype="srcdens")
-                fig, ax = plt.subplots(figsize=(6, 6))
-                ax.imshow(data, origin="lower", cmap="gray", alpha=0.5)
-                ax.imshow(sourcedens_overlay, origin="lower", cmap="Reds", alpha=0.3)
-                ax.set_title("Source Density Overlay")
-                ax.axis("off")
-                buf = io.BytesIO()
-                plt.savefig(buf, format="png")
-                plt.close(fig)
-                st.image(buf, use_column_width=True)
+def visualize_image(
+    data: np.ndarray,
+    title: str,
+    overlay: Optional[np.ndarray] = None,
+    overlay_cmap: str = "Oranges",
+) -> io.BytesIO:
+    """Create visualization of image data with optional overlay."""
+    fig, ax = plt.subplots(figsize=(8, 8))
 
-                # Visualize Background Median Overlay
-                st.subheader("Background Median Overlay")
-                bkgmedian_overlay = image.create_overlay(overlaytype="bkgmedian")
-                fig, ax = plt.subplots(figsize=(6, 6))
-                ax.imshow(data, origin="lower", cmap="gray", alpha=0.5)
-                ax.imshow(bkgmedian_overlay, origin="lower", cmap="Blues", alpha=0.3)
-                ax.set_title("Background Median Overlay")
-                ax.axis("off")
-                buf = io.BytesIO()
-                plt.savefig(buf, format="png")
-                plt.close(fig)
-                st.image(buf, use_column_width=True)
-        else:
-            st.warning("Please create subregions first.")
+    # Normalize display
+    vmin, vmax = np.percentile(data[~np.isnan(data)], (1, 99))
+    ax.imshow(data, origin="lower", cmap="gray", vmin=vmin, vmax=vmax)
 
+    if overlay is not None:
+        ax.imshow(overlay, origin="lower", cmap=overlay_cmap, alpha=0.3)
+
+    ax.set_title(title)
+    ax.axis("off")
+
+    buf = io.BytesIO()
+    plt.savefig(buf, format="png", bbox_inches="tight", dpi=150)
+    plt.close(fig)
+    return buf
+
+
+def main():
+    st.title("Cloud Detection")
+
+    processor = ImageProcessor()
+
+    # File upload section
+    st.sidebar.header("Image Upload")
+    uploaded_files = st.sidebar.file_uploader(
+        "Upload FITS Files", type=["fits", "fits.bz2"], accept_multiple_files=True
+    )
+
+    optional_mask = st.sidebar.file_uploader(
+        "Upload Optional Mask (FITS)", type=["fits"], key="mask_upload"
+    )
+
+    if not uploaded_files:
+        st.info("Please upload FITS files to begin processing")
+        return
+
+    # Process uploaded files
+    images = processor.process_multiple_images(uploaded_files)
+    if not images:
+        st.error("No valid images found in uploaded files")
+        return
+
+    # Display sample image
+    st.header("Sample Image")
+    sample_buf = visualize_image(images[0].data, "Sample Original Image")
+    st.image(sample_buf, use_column_width=True)
+
+    # Mask Generation
+    st.header("1. Mask Generation")
+    if optional_mask:
+        mask_data, _ = processor.load_fits_file(optional_mask)
+        if mask_data is not None:
+            processor.mask = AllskyImage("uploaded_mask", mask_data, {})
+            st.success("Using uploaded mask")
     else:
-        st.info("Please upload a FITS file to begin processing.")
+        if st.button("Generate Mask from Images"):
+            mask = processor.generate_mask(images)
+            if mask:
+                st.success("Mask generated successfully")
+                mask_buf = visualize_image(mask.data, "Generated Mask")
+                st.image(mask_buf, use_column_width=True)
+
+    # Subregion Creation
+    if processor.mask is not None:
+        st.header("2. Subregion Analysis")
+        if st.button("Create Subregions"):
+            if processor.create_subregions():
+                st.success("Subregions created successfully")
+
+                # Display subregion overlay
+                overlay = images[0].create_overlay(overlaytype="subregions")
+                overlay_buf = visualize_image(
+                    images[0].data, "Subregions Overlay", overlay=overlay
+                )
+                st.image(overlay_buf, use_column_width=True)
+
+                # Feature Extraction
+                st.header("3. Feature Extraction")
+                if st.button("Extract Features"):
+                    for idx, image in enumerate(images):
+                        features_df = processor.extract_features(image)
+                        if features_df is not None:
+                            st.subheader(f"Features for Image {idx + 1}")
+                            st.dataframe(features_df)
+
+                            # Generate and display overlays
+                            for overlay_type, params in [
+                                ("srcdens", ("Source Density", "Reds")),
+                                ("bkgmedian", ("Background Median", "Blues")),
+                            ]:
+                                overlay = image.create_overlay(overlaytype=overlay_type)
+                                overlay_buf = visualize_image(
+                                    image.data,
+                                    f"{params[0]} Overlay",
+                                    overlay=overlay,
+                                    overlay_cmap=params[1],
+                                )
+                                st.image(overlay_buf, use_column_width=True)
 
 
 if __name__ == "__main__":
+    st.set_page_config(
+        page_title="Cloud Detection System", page_icon="☁️", layout="wide"
+    )
     main()
