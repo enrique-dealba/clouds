@@ -210,7 +210,7 @@ def main():
         return
 
     # Set current image
-    processor.current_image = images[0]  # Add this line
+    processor.current_image = images[0]  # Set to first valid image
 
     # Display sample image
     st.header("Sample Image")

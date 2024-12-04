@@ -105,12 +105,6 @@ class AllskyImage:
                 "Subregions must be initialized before creating overlay"
             )
 
-        # Ensure the mask shape matches the current image shape
-        if self.maskdata is not None and self.maskdata.data.shape != self.data.shape:
-            raise ValueError(
-                f"Mask shape {self.maskdata.data.shape} does not match image shape {self.data.shape}."
-            )
-
         map = np.zeros(self.data.shape)
 
         # If regions is None, create a list of True values
@@ -118,6 +112,7 @@ class AllskyImage:
             regions = [True] * len(self.subregions)
 
         for i, sub in enumerate(self.subregions):
+            # Ensure subregion shape matches image shape
             if sub.shape != self.data.shape:
                 raise ValueError(
                     f"Subregion {i} shape {sub.shape} does not match image shape {self.data.shape}."
