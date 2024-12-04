@@ -17,6 +17,7 @@ class ImageProcessor:
         self.camera = AllskyCamera()
         self.mask: Optional[AllskyImage] = None
         self.mask_data: Optional[np.ndarray] = None
+        self.current_image: Optional[AllskyImage] = None
 
     def load_fits_file(
         self, uploaded_file
@@ -104,6 +105,10 @@ class ImageProcessor:
                 st.warning("Subregions were created but appear to be empty")
                 return False
 
+            # Share subregions with current image
+            if self.current_image is not None:
+                self.current_image.subregions = self.camera.subregions
+
             return True
 
         except Exception as e:
@@ -111,7 +116,6 @@ class ImageProcessor:
 
             st.error("Error during subregion creation:")
             st.error(str(e))
-            # Print traceback for debugging
             st.error(traceback.format_exc())
             return False
 
@@ -186,6 +190,9 @@ def main():
         st.error("No valid images found in uploaded files")
         return
 
+    # Set current image
+    processor.current_image = images[0]  # Add this line
+
     # Display sample image
     st.header("Sample Image")
     sample_buf = visualize_image(images[0].data, "Sample Original Image")
@@ -215,34 +222,20 @@ def main():
                 st.success("Subregions created successfully")
 
                 # Display subregion overlay
-                overlay = images[0].create_overlay(overlaytype="subregions")
-                overlay_buf = visualize_image(
-                    images[0].data, "Subregions Overlay", overlay=overlay
-                )
-                st.image(overlay_buf, use_container_width=True)
-
-                # Feature Extraction
-                st.header("3. Feature Extraction")
-                if st.button("Extract Features"):
-                    for idx, image in enumerate(images):
-                        features_df = processor.extract_features(image)
-                        if features_df is not None:
-                            st.subheader(f"Features for Image {idx + 1}")
-                            st.dataframe(features_df)
-
-                            # Generate and display overlays
-                            for overlay_type, params in [
-                                ("srcdens", ("Source Density", "Reds")),
-                                ("bkgmedian", ("Background Median", "Blues")),
-                            ]:
-                                overlay = image.create_overlay(overlaytype=overlay_type)
-                                overlay_buf = visualize_image(
-                                    image.data,
-                                    f"{params[0]} Overlay",
-                                    overlay=overlay,
-                                    overlay_cmap=params[1],
-                                )
-                                st.image(overlay_buf, use_container_width=True)
+                if (
+                    processor.current_image
+                    and processor.current_image.subregions is not None
+                ):
+                    overlay = processor.current_image.create_overlay(
+                        overlaytype="subregions",
+                        regions=[True] * len(processor.current_image.subregions),
+                    )
+                    overlay_buf = visualize_image(
+                        processor.current_image.data,
+                        "Subregions Overlay",
+                        overlay=overlay,
+                    )
+                    st.image(overlay_buf, use_container_width=True)
 
 
 if __name__ == "__main__":

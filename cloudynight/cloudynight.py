@@ -100,7 +100,16 @@ class AllskyImage:
 
         :return: overlay array
         """
+        if self.subregions is None:
+            raise AllskyImageError(
+                "Subregions must be initialized before creating overlay"
+            )
+
         map = np.zeros(self.data.shape)
+
+        # If regions is None, create a list of True values
+        if regions is None and overlaytype == "subregions":
+            regions = [True] * len(self.subregions)
 
         for i, sub in enumerate(self.subregions):
             if overlaytype == "srcdens":
