@@ -23,7 +23,7 @@ from astropy.time import Time
 from astropy.visualization import ImageNormalize, LinearStretch
 from joblib import dump, load
 from lightgbm import LGBMClassifier
-from scipy.ndimage.filters import gaussian_filter
+from scipy.ndimage import gaussian_filter
 from scipy.signal import convolve2d
 from skimage import measure
 from sklearn.metrics import f1_score

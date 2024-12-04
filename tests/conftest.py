@@ -5,8 +5,23 @@ from astropy.io import fits
 from cloudynight import AllskyCamera, AllskyImage
 
 
+def create_sample_fits(filename, shape=(1040, 1392)):
+    """Generate a sample FITS file with random data."""
+    data = np.random.random(shape)
+    hdu = fits.PrimaryHDU(data)
+    hdu.header["DATE-OBS"] = "2024-12-04T00:00:00"
+    hdu.writeto(filename, overwrite=True)
+
+
+def create_mask_fits(filename, shape=(1040, 1392)):
+    """Generate a binary mask FITS file."""
+    data = np.random.choice([0, 1], size=shape)
+    hdu = fits.PrimaryHDU(data)
+    hdu.writeto(filename, overwrite=True)
+
+
 def get_fits_info(fits_path):
-    """Get basic information about a FITS file"""
+    """Retrieve basic information from a FITS file."""
     with fits.open(fits_path) as hdul:
         data = hdul[0].data
         header = hdul[0].header
@@ -22,50 +37,46 @@ def get_fits_info(fits_path):
 
 
 @pytest.fixture
-def sample_fits_info(request):
-    """Get information about the sample FITS file"""
-    sample_path = request.config.getoption("--sample-fits")
-    if not sample_path:
-        pytest.skip("No sample FITS file provided")
+def sample_fits_info(tmp_path):
+    """Fixture to create and provide sample FITS file information."""
+    sample_path = tmp_path / "sample.fits"
+    create_sample_fits(sample_path, shape=(1040, 1392))
     return get_fits_info(sample_path)
 
 
 @pytest.fixture
-def mask_fits_info(request):
-    """Get information about the mask FITS file"""
-    mask_path = request.config.getoption("--mask-fits")
-    if not mask_path:
-        pytest.skip("No mask FITS file provided")
+def mask_fits_info(tmp_path):
+    """Fixture to create and provide mask FITS file information."""
+    mask_path = tmp_path / "mask.fits"
+    create_mask_fits(mask_path, shape=(1040, 1392))
     return get_fits_info(mask_path)
 
 
 @pytest.fixture
 def sample_image(sample_fits_info):
-    """Create sample AllskyImage instance from actual FITS file"""
+    """Fixture to create an AllskyImage instance from the sample FITS file."""
     _, data, header = sample_fits_info
     return AllskyImage(filename="test.fits", data=data, header=header)
 
 
 @pytest.fixture
 def sample_camera():
-    """Create sample AllskyCamera instance"""
+    """Fixture to create an AllskyCamera instance."""
     return AllskyCamera()
 
 
 @pytest.fixture
 def sample_subregions(sample_fits_info):
-    """Create sample subregions matching actual image dimensions"""
+    """Fixture to create subregions matching the image dimensions."""
     info, _, _ = sample_fits_info
     shape = info["shape"]
-    n_regions = 33  # Expected number from original error
-    return np.array([np.random.rand(*shape) > 0.5 for _ in range(n_regions)])
+    n_regions = 33  # Expected number of subregions
+    # Generate random subregions with sparse 1s
+    return np.array([np.random.rand(*shape) > 0.95 for _ in range(n_regions)])
 
 
 def pytest_addoption(parser):
-    """Add command line options for test FITS files"""
-    parser.addoption(
-        "--sample-fits", action="store", default=None, help="Path to sample FITS file"
-    )
-    parser.addoption(
-        "--mask-fits", action="store", default=None, help="Path to mask FITS file"
-    )
+    """Remove command-line options as they are no longer needed."""
+    # Previously used to add --sample-fits and --mask-fits
+    # Now tests are self-contained
+    pass
