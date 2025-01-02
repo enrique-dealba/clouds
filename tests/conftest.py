@@ -80,3 +80,13 @@ def pytest_addoption(parser):
     # Previously used to add --sample-fits and --mask-fits
     # Now tests are self-contained
     pass
+
+
+@pytest.fixture
+def large_sample_fits_info(tmp_path):
+    """Fixture to create a larger sample FITS file."""
+    sample_path = tmp_path / "large_sample.fits"
+    create_sample_fits(
+        sample_path, shape=(1240, 1592)
+    )  # 200 pixels larger in each dimension
+    return get_fits_info(sample_path)
