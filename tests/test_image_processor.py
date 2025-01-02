@@ -5,6 +5,7 @@ from astropy.io import fits
 
 from cloudynight import AllskyImage
 from frontend.streamlit_app import ImageProcessor
+from tests.conftest import create_sample_fits, get_fits_info
 
 
 class MockUploadedFile:

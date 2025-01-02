@@ -131,6 +131,10 @@ class ImageProcessor:
             return False
 
         try:
+            # Ensure dimensions match before proceeding
+            if not self.ensure_dimensions_match():
+                return False
+
             self.camera.maskdata = AllskyImage(
                 filename="mask", data=self.mask_data, header={}
             )
