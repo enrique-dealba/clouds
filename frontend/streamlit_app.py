@@ -54,6 +54,21 @@ class ImageProcessor:
             if "file_buffer" in locals():
                 file_buffer.close()
 
+    def ensure_dimensions_match(self) -> bool:
+        """Checks if current img dimensions match mask dimensions."""
+        if self.current_image is None or self.mask is None:
+            return False
+
+        try:
+            if self.current_image.data.shape != self.mask.data.shape:
+                self.current_image.resize_to_mask(self.mask.data.shape)
+                return True
+        except ValueError as e:
+            st.error(f"Cannot match dimensions: {str(e)}")
+            return False
+
+        return True
+
     def process_multiple_images(self, uploaded_files) -> List[AllskyImage]:
         """Process multiple FITS files into AllskyImage objects."""
         images = []
@@ -68,23 +83,27 @@ class ImageProcessor:
                     header=header,
                 )
                 try:
-                    img.crop_image()
+                    # If we have a mask, resize to match mask dimensions
+                    if self.mask is not None:
+                        img.resize_to_mask(self.mask.data.shape)
+                    else:
+                        img.crop_image()
+
+                    # Set the expected shape based on the first valid image
+                    if expected_shape is None:
+                        expected_shape = img.data.shape
+                    else:
+                        if img.data.shape != expected_shape:
+                            st.warning(
+                                f"Skipping {file.name}: Image shape {img.data.shape} "
+                                f"does not match expected shape {expected_shape}."
+                            )
+                            continue
+
+                    images.append(img)
                 except ValueError as ve:
                     st.warning(f"Skipping {file.name}: {ve}")
                     continue
-
-                # Set the expected shape based on the first valid image
-                if expected_shape is None:
-                    expected_shape = img.data.shape
-                else:
-                    if img.data.shape != expected_shape:
-                        st.warning(
-                            f"Skipping {file.name}: Cropped image shape {img.data.shape} "
-                            f"does not match expected shape {expected_shape}."
-                        )
-                        continue
-
-                images.append(img)
 
         return images
 
@@ -224,7 +243,11 @@ def main():
         if mask_data is not None:
             processor.mask = AllskyImage("uploaded_mask", mask_data, {})
             processor.mask_data = mask_data  # Store the mask data
-            st.success("Using uploaded mask")
+            if processor.ensure_dimensions_match():
+                st.success("Using uploaded mask - dimensions matched/adjusted")
+            else:
+                st.error("Could not adjust image dimensions to match mask")
+                return
     else:
         if st.button("Generate Mask from Images"):
             mask = processor.generate_mask(images)
@@ -237,24 +260,29 @@ def main():
     if processor.mask is not None:
         st.header("2. Subregion Analysis")
         if st.button("Create Subregions"):
-            if processor.create_subregions():
-                st.success("Subregions created successfully")
+            if processor.ensure_dimensions_match():
+                if processor.create_subregions():
+                    st.success("Subregions created successfully")
 
-                # Display subregion overlay
-                if (
-                    processor.current_image
-                    and processor.current_image.subregions is not None
-                ):
-                    overlay = processor.current_image.create_overlay(
-                        overlaytype="subregions",
-                        regions=[True] * len(processor.current_image.subregions),
-                    )
-                    overlay_buf = visualize_image(
-                        processor.current_image.data,
-                        "Subregions Overlay",
-                        overlay=overlay,
-                    )
-                    st.image(overlay_buf, use_container_width=True)
+                    # Display subregion overlay
+                    if (
+                        processor.current_image
+                        and processor.current_image.subregions is not None
+                    ):
+                        try:
+                            overlay = processor.current_image.create_overlay(
+                                overlaytype="subregions",
+                                regions=[True]
+                                * len(processor.current_image.subregions),
+                            )
+                            overlay_buf = visualize_image(
+                                processor.current_image.data,
+                                "Subregions Overlay",
+                                overlay=overlay,
+                            )
+                            st.image(overlay_buf, use_container_width=True)
+                        except ValueError as e:
+                            st.error(f"Error creating overlay: {str(e)}")
 
 
 if __name__ == "__main__":
