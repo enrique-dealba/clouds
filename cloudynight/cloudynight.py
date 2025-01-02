@@ -81,6 +81,26 @@ class AllskyImage:
 
         return self
 
+    def resize_to_mask(self, mask_shape):
+        """Resize image data to match mask dimensions.
+        If image is larger, crop from top-left corner.
+        If image is smaller, raise an error."""
+
+        if self.data.shape == mask_shape:
+            return
+
+        y_target, x_target = mask_shape
+        y_current, x_current = self.data.shape
+
+        if y_current < y_target or x_current < x_target:
+            raise ValueError(
+                f"Image dimensions ({y_current}, {x_current}) are smaller than "
+                f"mask dimensions ({y_target}, {x_target}). Image must be larger or equal."
+            )
+
+        # Crop from top-left corner to match mask dimensions
+        self.data = self.data[:y_target, :x_target]
+
     def write_fits(self, filename):
         """Write `~AllskyImage` instance to FITS image file"""
         hdu = fits.PrimaryHDU(self.data)
@@ -207,8 +227,13 @@ class AllskyImage:
         self.thumbfilename = os.path.join(*filename.split(os.path.sep)[-2:])
 
     def apply_mask(self, mask):
-        """Apply `~AllskyImage` mask to this instance"""
-        self.data = self.data * mask.data
+        """Apply mask to this image instance.
+        Resizes image if needed to match mask dimensions."""
+        try:
+            self.resize_to_mask(mask.data.shape)
+            self.data = self.data * mask.data
+        except ValueError as e:
+            raise AllskyImageError(f"Failed to apply mask: {str(e)}")
 
     def crop_image(self):
         """Crop this `~AllskyImage` instance to the ranges defined by
@@ -588,29 +613,40 @@ class AllskyCamera:
         self.maskdata = AllskyImage.read_fits(filename)
 
     def process_and_upload_data(self, no_upload=False):
-        """Wrapper method to automatically process images and upload data to
-        the database. This method also creates thumbnail images that are
-        saved to the corresponding archive directory."""
+        """Process images and handle dimension mismatches with mask"""
         conf.logger.info("processing image files")
 
         for dat in self.imgdata:
             conf.logger.info('extract features from file "{}"'.format(dat.filename))
-            file_idx = int(
-                dat.filename[len(conf.FITS_PREFIX) : -len(conf.FITS_SUFFIX) - 1]
-            )
-            extraction = dat.extract_features(self.subregions, mask=self.maskdata.data)
-            if extraction is False:
-                conf.logger.error('ignore results for image "{}".'.format(dat.filename))
+            try:
+                # Resize image to match mask if needed
+                if self.maskdata is not None:
+                    dat.resize_to_mask(self.maskdata.data.shape)
+
+                file_idx = int(
+                    dat.filename[len(conf.FITS_PREFIX) : -len(conf.FITS_SUFFIX) - 1]
+                )
+                extraction = dat.extract_features(
+                    self.subregions, mask=self.maskdata.data
+                )
+
+                if extraction is False:
+                    conf.logger.error(
+                        'ignore results for image "{}".'.format(dat.filename)
+                    )
+                    continue
+
+                filename = dat.filename[: dat.filename.find(conf.FITS_SUFFIX)] + "png"
+                dat.write_image(
+                    os.path.join(conf.DIR_ARCHIVE, filename), mask=self.maskdata
+                )
+
+                if not no_upload:
+                    dat.write_to_database()
+
+            except (ValueError, AllskyImageError) as e:
+                conf.logger.error(f'Error processing "{dat.filename}": {str(e)}')
                 continue
-
-            filename = dat.filename[: dat.filename.find(conf.FITS_SUFFIX)] + "png"
-
-            dat.write_image(
-                os.path.join(conf.DIR_ARCHIVE, filename), mask=self.maskdata
-            )
-
-            if not no_upload:
-                dat.write_to_database()
 
         return file_idx
 

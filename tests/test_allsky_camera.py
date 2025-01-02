@@ -1,5 +1,7 @@
 import numpy as np
 
+from cloudynight.cloudynight import AllskyImage
+
 
 def test_generate_subregions_dimensions(sample_camera, sample_image, sample_fits_info):
     """Test that generated subregions match image dimensions"""
@@ -30,3 +32,29 @@ def test_mask_generation(sample_camera, sample_image, mask_fits_info):
     # Compare with provided mask (optional)
     correlation = np.corrcoef(generated_mask.data.flatten(), mask_data.flatten())[0, 1]
     print(f"\nMask correlation coefficient: {correlation:.3f}")
+
+
+def test_camera_process_mismatched_images(
+    sample_camera, large_sample_fits_info, mask_fits_info
+):
+    """Test camera processing with mismatched image and mask dimensions"""
+    # Create larger image
+    large_image = AllskyImage(
+        filename="large.fits",
+        data=large_sample_fits_info[1],
+        header=large_sample_fits_info[2],
+    )
+
+    # Set mask
+    sample_camera.maskdata = AllskyImage(
+        filename="mask", data=mask_fits_info[1], header=mask_fits_info[2]
+    )
+
+    # Set image data
+    sample_camera.imgdata = [large_image]
+
+    # Process data
+    sample_camera.process_and_upload_data(no_upload=True)
+
+    # Verify processed image matches mask dimensions
+    assert sample_camera.imgdata[0].data.shape == sample_camera.maskdata.data.shape
