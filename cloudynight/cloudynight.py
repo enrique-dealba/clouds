@@ -615,6 +615,7 @@ class AllskyCamera:
     def process_and_upload_data(self, no_upload=False):
         """Process images and handle dimension mismatches with mask"""
         conf.logger.info("processing image files")
+        last_file_idx = 0  # Default return value
 
         for dat in self.imgdata:
             conf.logger.info('extract features from file "{}"'.format(dat.filename))
@@ -623,9 +624,17 @@ class AllskyCamera:
                 if self.maskdata is not None:
                     dat.resize_to_mask(self.maskdata.data.shape)
 
-                file_idx = int(
-                    dat.filename[len(conf.FITS_PREFIX) : -len(conf.FITS_SUFFIX) - 1]
-                )
+                # Try to get file index, use default if not possible
+                try:
+                    file_idx = int(
+                        dat.filename[len(conf.FITS_PREFIX) : -len(conf.FITS_SUFFIX) - 1]
+                    )
+                    last_file_idx = file_idx
+                except (ValueError, IndexError):
+                    conf.logger.warning(
+                        f'Could not extract numeric index from filename "{dat.filename}"'
+                    )
+
                 extraction = dat.extract_features(
                     self.subregions, mask=self.maskdata.data
                 )
@@ -648,7 +657,7 @@ class AllskyCamera:
                 conf.logger.error(f'Error processing "{dat.filename}": {str(e)}')
                 continue
 
-        return file_idx
+        return last_file_idx
 
     def generate_subregions(self):
         """Create subregions array. This array consists of N_subregions
