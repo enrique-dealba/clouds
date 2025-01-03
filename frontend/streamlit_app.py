@@ -186,34 +186,32 @@ def visualize_image(
     data: np.ndarray,
     title: str,
     overlay: Optional[np.ndarray] = None,
+    overlay_cmap: str = "Oranges",
 ) -> io.BytesIO:
-    """Create visualization of image data with overlay."""
-    # Input validation
-    if data.size == 0:
-        raise ValueError("Empty input array")
-    if len(data.shape) != 2:
-        raise ValueError("Input must be 2D array")
-    if overlay is not None and overlay.shape != data.shape:
-        raise ValueError("Overlay must have same shape as input data")
-
+    """Create visualization of image data with optional overlay."""
     # Create figure
-    plt.figure(figsize=(10, 10))
+    fig, ax = plt.subplots(figsize=(10, 10))
+
+    # Normalize display using robust statistics
+    vmin, vmax = np.percentile(data[~np.isnan(data)], (1, 99))
 
     # Display image
-    plt.imshow(data, cmap="gray", origin="lower")
+    ax.imshow(data, origin="lower", cmap="gray", vmin=vmin, vmax=vmax)
     plt.colorbar(label="Pixel Value")
-    plt.title(title)
-    plt.xlabel("X Pixel")
-    plt.ylabel("Y Pixel")
 
     # Add overlay if provided
     if overlay is not None:
-        plt.imshow(overlay, cmap="Oranges", alpha=0.3, origin="lower")
+        ax.imshow(overlay, origin="lower", cmap=overlay_cmap, alpha=0.3)
 
-    # Save to buffer
+    # Add labels and title
+    ax.set_title(title)
+    ax.set_xlabel("X Pixel")
+    ax.set_ylabel("Y Pixel")
+
+    # Save and close
     buf = io.BytesIO()
-    plt.savefig(buf, format="png")
-    plt.close()
+    plt.savefig(buf, format="png", bbox_inches="tight", dpi=150)
+    plt.close(fig)
     return buf
 
 
