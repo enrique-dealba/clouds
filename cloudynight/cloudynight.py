@@ -254,31 +254,29 @@ class AllskyImage:
             raise AllskyImageError(f"Failed to apply mask: {str(e)}")
 
     def crop_image(self):
-        """Crop this `~AllskyImage` instance to the ranges defined by
-        ``conf.X_CROPRANGE`` and ``conf.Y_CROPRANGE``.
-        """
+        """Crop this `~AllskyImage` instance only if needed."""
         y_size, x_size = self.data.shape
-        y_start, y_end = conf.Y_CROPRANGE
-        x_start, x_end = conf.X_CROPRANGE
 
-        # Adjust crop ranges if image is smaller than expected
-        original_crop = (y_start, y_end, x_start, x_end)
-        y_end = min(y_end, y_size)
-        x_end = min(x_end, x_size)
+        # Only crop if image is larger than maximum desired dimensions
+        max_width = 4096
+        max_height = 4096
 
-        adjusted_crop = (y_start, y_end, x_start, x_end)
+        if x_size > max_width or y_size > max_height:
+            # Calculate proportional crop to maintain aspect ratio
+            aspect_ratio = x_size / y_size
+            if x_size > max_width:
+                new_width = max_width
+                new_height = int(new_width / aspect_ratio)
+            else:
+                new_height = max_height
+                new_width = int(new_height * aspect_ratio)
 
-        conf.logger.info(
-            f"Cropping image '{self.filename}': Original crop Y: {original_crop[:2]}, X: {original_crop[2:]}; "
-            f"Adjusted crop Y: {adjusted_crop[:2]}, X: {adjusted_crop[2:]}."
-        )
+            x_start = (x_size - new_width) // 2
+            x_end = x_start + new_width
+            y_start = (y_size - new_height) // 2
+            y_end = y_start + new_height
 
-        if y_start >= y_end or x_start >= x_end:
-            raise ValueError(
-                f"Invalid crop range after adjustment: Y: ({y_start}, {y_end}), X: ({x_start}, {x_end})."
-            )
-
-        self.data = self.data[y_start:y_end, x_start:x_end]
+            self.data = self.data[y_start:y_end, x_start:x_end]
 
     def extract_features(self, subregions, mask=None):
         """Extract image features for each subregion. Image should be cropped

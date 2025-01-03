@@ -235,3 +235,23 @@ def test_visualize_image_preserves_full_content():
         h // 2 - corner_size : h // 2 + corner_size,
         w // 2 - corner_size : w // 2 + corner_size,
     ].any(), "Center missing"
+
+
+def test_image_processing_preserves_size():
+    """Test that image processing preserves original dimensions when no mask is used."""
+    processor = ImageProcessor()
+
+    # Create test data larger than default crop dimensions
+    large_data = np.random.rand(2048, 2048)
+    header = {"DATE-OBS": "2024-01-01T00:00:00"}
+    mock_file = MockUploadedFile("large.fits", large_data, header)
+
+    # Process the image
+    images = processor.process_multiple_images([mock_file])
+
+    # Verify dimensions were preserved
+    assert len(images) == 1
+    assert images[0].data.shape == (
+        2048,
+        2048,
+    ), f"Image was cropped from (2048, 2048) to {images[0].data.shape}"
