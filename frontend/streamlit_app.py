@@ -246,7 +246,7 @@ def main():
     # Display sample image
     st.header("Sample Image")
     sample_buf = visualize_image(images[0].data, "Sample Original Image")
-    st.image(sample_buf, use_container_width=True)
+    st.image(sample_buf)  # Image displays at full resolution
 
     # Mask Generation
     st.header("1. Mask Generation")
