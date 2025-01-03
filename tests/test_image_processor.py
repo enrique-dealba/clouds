@@ -170,6 +170,10 @@ def test_visualize_large_fits(large_fits_data):
     assert img.size[0] > 0
     assert img.size[1] > 0
 
+    height, width = large_fits_data.shape
+    assert width == 2048  # Verify test data size
+    assert height == 2048
+
 
 def test_visualize_large_fits_with_overlay(large_fits_data):
     """Test visualization with overlay for 2048x2048 FITS image."""
@@ -184,3 +188,7 @@ def test_visualize_large_fits_with_overlay(large_fits_data):
     img = Image.open(buf)
     assert img.size[0] > 0
     assert img.size[1] > 0
+
+    height, width = large_fits_data.shape
+    assert width == overlay.shape[1]
+    assert height == overlay.shape[0]

@@ -189,15 +189,15 @@ def visualize_image(
     overlay_cmap: str = "Oranges",
 ) -> io.BytesIO:
     """Create visualization of image data with optional overlay."""
-    # Create figure
-    fig, ax = plt.subplots(figsize=(10, 10))
+    # Create figure - size based on actual image dimensions
+    fig, ax = plt.subplots()
 
     # Normalize display using robust statistics
     vmin, vmax = np.percentile(data[~np.isnan(data)], (1, 99))
 
-    # Display image and store the mappable for colorbar
+    # Display full image and store the mappable for colorbar
     im = ax.imshow(data, origin="lower", cmap="gray", vmin=vmin, vmax=vmax)
-    plt.colorbar(im, label="Pixel Value")  # Use the stored mappable
+    plt.colorbar(im, label="Pixel Value")
 
     # Add overlay if provided
     if overlay is not None:
@@ -208,7 +208,7 @@ def visualize_image(
     ax.set_xlabel("X Pixel")
     ax.set_ylabel("Y Pixel")
 
-    # Save and close
+    # Save at full resolution
     buf = io.BytesIO()
     plt.savefig(buf, format="png", bbox_inches="tight", dpi=150)
     plt.close(fig)
