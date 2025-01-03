@@ -195,9 +195,9 @@ def visualize_image(
     # Normalize display using robust statistics
     vmin, vmax = np.percentile(data[~np.isnan(data)], (1, 99))
 
-    # Display image
-    ax.imshow(data, origin="lower", cmap="gray", vmin=vmin, vmax=vmax)
-    plt.colorbar(label="Pixel Value")
+    # Display image and store the mappable for colorbar
+    im = ax.imshow(data, origin="lower", cmap="gray", vmin=vmin, vmax=vmax)
+    plt.colorbar(im, label="Pixel Value")  # Use the stored mappable
 
     # Add overlay if provided
     if overlay is not None:
