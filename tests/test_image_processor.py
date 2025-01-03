@@ -255,3 +255,26 @@ def test_image_processing_preserves_size():
         2048,
         2048,
     ), f"Image was cropped from (2048, 2048) to {images[0].data.shape}"
+
+
+def test_visualization_size():
+    """Test that visualization produces appropriately sized output."""
+    # Create test data
+    test_data = np.zeros((2048, 2048))
+
+    # Generate visualization
+    buf = visualize_image(test_data, "Size Test")
+
+    # Load and check output image size
+    img = Image.open(buf)
+    width, height = img.size
+
+    # The output image should be reasonably large
+    min_dimension = 800  # Minimum acceptable dimension in pixels
+    assert width >= min_dimension, f"Image width ({width}px) is too small"
+    assert height >= min_dimension, f"Image height ({height}px) is too small"
+
+    # Check aspect ratio is maintained
+    data_aspect = test_data.shape[1] / test_data.shape[0]
+    img_aspect = width / height
+    assert abs(data_aspect - img_aspect) < 0.1, "Aspect ratio not maintained"

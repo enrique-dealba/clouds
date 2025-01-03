@@ -188,31 +188,51 @@ def visualize_image(
     overlay: Optional[np.ndarray] = None,
     overlay_cmap: str = "Oranges",
 ) -> io.BytesIO:
-    # Calculate dimensions
+    """Create visualization of image data with proper sizing."""
+    # Get dimensions
     height, width = data.shape
-    scale = min(15 / max(height, width), 1.0)
-    figsize = (width * scale / 100, height * scale / 100)
 
-    # Create figure with calculated size
-    fig, ax = plt.subplots(figsize=figsize)
+    # Calculate figure size in inches - using larger scale factor
+    dpi = 100  # Standard screen DPI
+    figsize = (width / dpi * 2, height / dpi * 2)  # Double the default size
+
+    # Create figure with explicit size
+    fig = plt.figure(figsize=figsize, dpi=dpi)
+    ax = fig.add_subplot(111)
 
     # Normalize display using robust statistics
     vmin, vmax = np.percentile(data[~np.isnan(data)], (1, 99))
 
-    # Display full image
-    im = ax.imshow(data, origin="lower", cmap="gray", vmin=vmin, vmax=vmax)
+    # Display image at full size
+    im = ax.imshow(
+        data,
+        origin="lower",
+        cmap="gray",
+        vmin=vmin,
+        vmax=vmax,
+        extent=[0, width, 0, height],
+    )
     plt.colorbar(im, label="Pixel Value")
 
     if overlay is not None:
-        ax.imshow(overlay, origin="lower", cmap=overlay_cmap, alpha=0.3)
+        ax.imshow(
+            overlay,
+            origin="lower",
+            cmap=overlay_cmap,
+            alpha=0.3,
+            extent=[0, width, 0, height],
+        )
 
     ax.set_title(title)
     ax.set_xlabel("X Pixel")
     ax.set_ylabel("Y Pixel")
 
-    # Save at high resolution
+    # Adjust layout
+    plt.tight_layout()
+
+    # Save at full size
     buf = io.BytesIO()
-    plt.savefig(buf, format="png", bbox_inches="tight", dpi=300)
+    plt.savefig(buf, format="png", bbox_inches="tight", dpi=dpi)
     plt.close(fig)
     return buf
 
@@ -248,9 +268,8 @@ def main():
     # Display sample image
     st.header("Sample Image")
     sample_buf = visualize_image(images[0].data, "Sample Original Image")
-    col1, _ = st.columns([3, 1])
-    with col1:
-        st.image(sample_buf, use_container_width=False)
+    # Use full width and don't let Streamlit resize
+    st.image(sample_buf, use_column_width=True)
 
     # Mask Generation
     st.header("1. Mask Generation")
