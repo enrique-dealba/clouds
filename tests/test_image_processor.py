@@ -1,10 +1,12 @@
 import io
 
+import numpy as np
 import pytest
 from astropy.io import fits
+from PIL import Image
 
 from cloudynight import AllskyImage
-from frontend.streamlit_app import ImageProcessor
+from frontend.streamlit_app import ImageProcessor, visualize_image
 from tests.conftest import create_sample_fits, get_fits_info
 
 
@@ -57,6 +59,20 @@ def mock_small_fits_file(tmp_path):
     create_sample_fits(sample_path, shape=small_shape)
     info, data, header = get_fits_info(sample_path)
     return MockUploadedFile("small.fits", data, header)
+
+
+@pytest.fixture
+def large_fits_data():
+    """Create a 2048x2048 test FITS data array."""
+    data = np.zeros((2048, 2048))
+    # Add a test pattern - diagonal gradient
+    x, y = np.meshgrid(np.linspace(0, 1, 2048), np.linspace(0, 1, 2048))
+    data = x + y
+    # Add some "stars"
+    rng = np.random.default_rng(42)  # Fixed seed for reproducibility
+    stars = rng.choice(data.size, 1000, replace=False)
+    data.ravel()[stars] = rng.uniform(5, 10, 1000)
+    return data
 
 
 def test_load_fits_file_dimensions(processor, mock_fits_file, mock_large_fits_file):
@@ -142,3 +158,29 @@ def test_create_subregions_with_mismatched_dimensions(
     assert processor.current_image.data.shape == processor.camera.maskdata.data.shape
     for subregion in processor.current_image.subregions:
         assert subregion.shape == processor.mask.data.shape
+
+
+def test_visualize_large_fits(large_fits_data):
+    """Test basic visualization of 2048x2048 FITS image."""
+    buf = visualize_image(large_fits_data, "Large FITS Test")
+    assert buf is not None
+
+    # Verify we can open the output image
+    img = Image.open(buf)
+    assert img.size[0] > 0
+    assert img.size[1] > 0
+
+
+def test_visualize_large_fits_with_overlay(large_fits_data):
+    """Test visualization with overlay for 2048x2048 FITS image."""
+    # Create test overlay same size as data
+    overlay = np.zeros((2048, 2048))
+    overlay[500:1500, 500:1500] = 1  # Add center square region
+
+    buf = visualize_image(large_fits_data, "Large FITS with Overlay", overlay=overlay)
+    assert buf is not None
+
+    # Verify output image
+    img = Image.open(buf)
+    assert img.size[0] > 0
+    assert img.size[1] > 0
