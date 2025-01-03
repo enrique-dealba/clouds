@@ -192,3 +192,46 @@ def test_visualize_large_fits_with_overlay(large_fits_data):
     height, width = large_fits_data.shape
     assert width == overlay.shape[1]
     assert height == overlay.shape[0]
+
+
+def test_visualize_image_preserves_full_content():
+    """Test that visualization preserves all data content without cropping."""
+    # Create test data with distinct features at the edges
+    test_data = np.zeros((2048, 2048))
+
+    # Add distinctive patterns at corners and center
+    test_data[0:100, 0:100] = 1.0  # Top-left corner
+    test_data[-100:, -100:] = 2.0  # Bottom-right corner
+    test_data[0:100, -100:] = 3.0  # Top-right corner
+    test_data[-100:, 0:100] = 4.0  # Bottom-left corner
+    test_data[1024 - 50 : 1024 + 50, 1024 - 50 : 1024 + 50] = 5.0  # Center
+
+    # Generate visualization
+    buf = visualize_image(test_data, "Full Content Test")
+
+    # Load the output image
+    img = Image.open(buf)
+    img_array = np.array(img)
+
+    # Convert to grayscale if necessary
+    if len(img_array.shape) == 3:  # If RGB
+        img_array = np.mean(img_array, axis=2)
+
+    # Find non-background regions in output
+    threshold = np.mean(img_array)
+    features = img_array > threshold
+
+    # Check all corners have visible features
+    # Get dimensions
+    h, w = features.shape
+    corner_size = min(h, w) // 10
+
+    # Test presence of features in all corners and center
+    assert features[:corner_size, :corner_size].any(), "Top-left corner missing"
+    assert features[:corner_size, -corner_size:].any(), "Top-right corner missing"
+    assert features[-corner_size:, :corner_size].any(), "Bottom-left corner missing"
+    assert features[-corner_size:, -corner_size:].any(), "Bottom-right corner missing"
+    assert features[
+        h // 2 - corner_size : h // 2 + corner_size,
+        w // 2 - corner_size : w // 2 + corner_size,
+    ].any(), "Center missing"
