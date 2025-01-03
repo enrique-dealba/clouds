@@ -269,7 +269,7 @@ def main():
     st.header("Sample Image")
     sample_buf = visualize_image(images[0].data, "Sample Original Image")
     # Use full width and don't let Streamlit resize
-    st.image(sample_buf, use_column_width=True)
+    st.image(sample_buf, use_container_width=True)
 
     # Mask Generation
     st.header("1. Mask Generation")
