@@ -188,29 +188,31 @@ def visualize_image(
     overlay: Optional[np.ndarray] = None,
     overlay_cmap: str = "Oranges",
 ) -> io.BytesIO:
-    """Create visualization of image data with optional overlay."""
-    # Create figure - size based on actual image dimensions
-    fig, ax = plt.subplots()
+    # Calculate dimensions
+    height, width = data.shape
+    scale = min(15 / max(height, width), 1.0)
+    figsize = (width * scale / 100, height * scale / 100)
+
+    # Create figure with calculated size
+    fig, ax = plt.subplots(figsize=figsize)
 
     # Normalize display using robust statistics
     vmin, vmax = np.percentile(data[~np.isnan(data)], (1, 99))
 
-    # Display full image and store the mappable for colorbar
+    # Display full image
     im = ax.imshow(data, origin="lower", cmap="gray", vmin=vmin, vmax=vmax)
     plt.colorbar(im, label="Pixel Value")
 
-    # Add overlay if provided
     if overlay is not None:
         ax.imshow(overlay, origin="lower", cmap=overlay_cmap, alpha=0.3)
 
-    # Add labels and title
     ax.set_title(title)
     ax.set_xlabel("X Pixel")
     ax.set_ylabel("Y Pixel")
 
-    # Save at full resolution
+    # Save at high resolution
     buf = io.BytesIO()
-    plt.savefig(buf, format="png", bbox_inches="tight", dpi=150)
+    plt.savefig(buf, format="png", bbox_inches="tight", dpi=300)
     plt.close(fig)
     return buf
 
@@ -246,7 +248,9 @@ def main():
     # Display sample image
     st.header("Sample Image")
     sample_buf = visualize_image(images[0].data, "Sample Original Image")
-    st.image(sample_buf)  # Image displays at full resolution
+    col1, _ = st.columns([3, 1])
+    with col1:
+        st.image(sample_buf, use_container_width=False)
 
     # Mask Generation
     st.header("1. Mask Generation")
