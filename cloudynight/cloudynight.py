@@ -83,9 +83,8 @@ class AllskyImage:
 
     def resize_to_mask(self, mask_shape):
         """Resize image data to match mask dimensions.
-        If image is larger, crop from top-left corner.
+        If image is larger, crop from center.
         If image is smaller, raise an error."""
-
         if self.data.shape == mask_shape:
             return
 
@@ -98,8 +97,27 @@ class AllskyImage:
                 f"mask dimensions ({y_target}, {x_target}). Image must be larger or equal."
             )
 
-        # Crop from top-left corner to match mask dimensions
-        self.data = self.data[:y_target, :x_target]
+        # Calculate center crop coordinates
+        y_start = (y_current - y_target) // 2
+        x_start = (x_current - x_target) // 2
+        y_end = y_start + y_target
+        x_end = x_start + x_target
+
+        # For odd differences, the extra pixel goes to the end
+        # This means for a difference of 3 pixels, we'll have 1 pixel before center and 2 after
+        if y_current - y_target % 2 == 1:
+            y_end = y_start + y_target
+        if x_current - x_target % 2 == 1:
+            x_end = x_start + x_target
+
+        # Crop from center
+        self.data = self.data[y_start:y_end, x_start:x_end]
+
+        # Verify resulting dimensions
+        if self.data.shape != mask_shape:
+            raise ValueError(
+                f"Cropping failed: got shape {self.data.shape}, expected {mask_shape}"
+            )
 
     def write_fits(self, filename):
         """Write `~AllskyImage` instance to FITS image file"""

@@ -126,3 +126,23 @@ def test_process_larger_fits_file(large_sample_fits_info, mask_fits_info):
     large_image.apply_mask(mask)
 
     assert large_image.data.shape == mask.data.shape
+
+
+def test_resize_to_mask_centers_properly(sample_image, mask_fits_info):
+    """Test that resize_to_mask performs a center crop."""
+    # Make image larger with distinct values
+    larger_shape = (sample_image.data.shape[0] + 200, sample_image.data.shape[1] + 200)
+    larger_data = np.zeros(larger_shape)
+    # Put a recognizable pattern in the center
+    center_y = larger_shape[0] // 2
+    center_x = larger_shape[1] // 2
+    larger_data[center_y, center_x] = 100  # Distinctive center value
+    sample_image.data = larger_data
+
+    mask_shape = mask_fits_info[0]["shape"]
+    sample_image.resize_to_mask(mask_shape)
+
+    # Check if center pixel is preserved
+    new_center_y = sample_image.data.shape[0] // 2
+    new_center_x = sample_image.data.shape[1] // 2
+    assert sample_image.data[new_center_y, new_center_x] == 100
