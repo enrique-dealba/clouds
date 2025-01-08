@@ -94,8 +94,22 @@ class CloudPredictors:
 
     def _get_kde_probability(self, value: float) -> Tuple[float, float]:
         """Calculate KDE probabilities for a value."""
-        log_density_0 = self.kde_label_0.score_samples([[value]])[0]
-        log_density_1 = self.kde_label_1.score_samples([[value]])[0]
+        if not np.isfinite(value):
+            import warnings
+
+            warnings.warn(
+                f"Inf. value encountered: {value}. Assigning zero probabilities."
+            )
+            return 0.0, 0.0
+
+        try:
+            log_density_0 = self.kde_label_0.score_samples([[value]])[0]
+            log_density_1 = self.kde_label_1.score_samples([[value]])[0]
+        except Exception as e:
+            import logging
+
+            logging.error(f"KDE scoring failed for value {value}: {e}")
+            return 0.0, 0.0
 
         # Use np.exp with clipping to avoid underflow
         prob_0 = np.clip(np.exp(log_density_0), 1e-10, None)

@@ -1,3 +1,5 @@
+from unittest import mock
+
 import numpy as np
 import pytest
 
@@ -123,18 +125,47 @@ def test_region_consistency(predictors, sample_image_data):
 
 def test_kde_predictor_edge_cases(predictors):
     """Test KDE predictions with edge cases."""
-    # Test with extreme values
+    # Define edge regions with extreme and normal values
     edge_regions = {
-        1: [float("inf")] * 100,  # Very large values
-        2: [float("-inf")] * 100,  # Very small values
+        1: [float("inf")] * 100,  # Very large values (positive infinity)
+        2: [float("-inf")] * 100,  # Very small values (negative infinity)
         3: [0] * 100,  # Zeros
         4: [3500] * 100,  # Normal values
     }
 
-    predictions = predictors.predict_kde(edge_regions)
-    assert len(predictions) == len(edge_regions)
-    assert all(isinstance(p, int) for p in predictions)
-    assert all(p in [0, 1] for p in predictions)
+    # Mock warnings and logging to prevent cluttering test output
+    with mock.patch("warnings.warn") as mock_warn, mock.patch(
+        "logging.error"
+    ) as mock_error:
+        # Get predictions from the predictor
+        predictions = predictors.predict_kde(edge_regions)
+
+        assert len(predictions) == len(
+            edge_regions
+        ), "Number of predictions does not match number of regions."
+        assert all(
+            isinstance(p, int) for p in predictions
+        ), "Not all predictions are integers."
+        assert all(
+            p in [0, 1] for p in predictions
+        ), "Predictions contain values other than 0 or 1."
+
+        predictions_dict = dict(zip(edge_regions.keys(), predictions))
+
+        assert predictions_dict[1] == 0, "Failed to handle positive infinity correctly."
+        assert predictions_dict[2] == 0, "Failed to handle negative infinity correctly."
+        assert predictions_dict[3] == 1, "Failed to handle zero values correctly."
+        assert predictions_dict[4] == 1, "Failed to handle normal values correctly."
+
+        # Checks warnings
+        assert mock_warn.call_count == 2, "Expected two warnings for non-finite values."
+        mock_warn.assert_any_call(
+            "Inf. value encountered: inf. Assigning zero probabilities."
+        )
+        mock_warn.assert_any_call(
+            "Inf. value encountered: -inf. Assigning zero probabilities."
+        )
+        assert mock_error.call_count == 0, "Unexpected errors were logged."
 
 
 def test_visualization_pipeline(sample_image_data, predictors):
