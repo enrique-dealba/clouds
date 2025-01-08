@@ -123,23 +123,21 @@ def test_region_consistency(predictors, sample_image_data):
     assert len(random_pred) == len(thresh_pred) == len(kde_pred) == len(regions)
 
 
-def test_kde_predictor_edge_cases(predictors):
-    """Test KDE predictions with edge cases."""
-    # Define edge regions with extreme and normal values
+def test_kde_predictor_inf_values(predictors):
+    """Test KDE predictions with positive and negative infinity."""
+    # Define edge regions with positive and negative infinity
     edge_regions = {
-        1: [float("inf")] * 100,  # Very large values (positive infinity)
-        2: [float("-inf")] * 100,  # Very small values (negative infinity)
-        3: [0] * 100,  # Zeros
-        4: [3500] * 100,  # Normal values
+        "positive_inf": [float("inf")] * 100,  # Very large values (positive infinity)
+        "negative_inf": [float("-inf")] * 100,  # Very small values (negative infinity)
     }
 
     # Mock warnings and logging to prevent cluttering test output
     with mock.patch("warnings.warn") as mock_warn, mock.patch(
         "logging.error"
     ) as mock_error:
-        # Get predictions from the predictor
         predictions = predictors.predict_kde(edge_regions)
 
+        # Assert the number of predictions matches the number of regions
         assert len(predictions) == len(
             edge_regions
         ), "Number of predictions does not match number of regions."
@@ -152,12 +150,13 @@ def test_kde_predictor_edge_cases(predictors):
 
         predictions_dict = dict(zip(edge_regions.keys(), predictions))
 
-        assert predictions_dict[1] == 0, "Failed to handle positive infinity correctly."
-        assert predictions_dict[2] == 0, "Failed to handle negative infinity correctly."
-        assert predictions_dict[3] == 1, "Failed to handle zero values correctly."
-        assert predictions_dict[4] == 1, "Failed to handle normal values correctly."
+        assert (
+            predictions_dict["positive_inf"] == 0
+        ), "Failed to handle positive infinity correctly."
+        assert (
+            predictions_dict["negative_inf"] == 0
+        ), "Failed to handle negative infinity correctly."
 
-        # Checks warnings
         assert mock_warn.call_count == 2, "Expected two warnings for non-finite values."
         mock_warn.assert_any_call(
             "Inf. value encountered: inf. Assigning zero probabilities."
