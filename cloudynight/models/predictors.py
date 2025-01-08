@@ -96,7 +96,16 @@ class CloudPredictors:
         """Calculate KDE probabilities for a value."""
         log_density_0 = self.kde_label_0.score_samples([[value]])[0]
         log_density_1 = self.kde_label_1.score_samples([[value]])[0]
-        prob_0 = np.exp(log_density_0)
-        prob_1 = np.exp(log_density_1)
-        total_prob = prob_0 + prob_1
-        return (prob_0 / total_prob) * 100, (prob_1 / total_prob) * 100
+
+        # Use np.exp with clipping to avoid underflow
+        prob_0 = np.clip(np.exp(log_density_0), 1e-10, None)
+        prob_1 = np.clip(np.exp(log_density_1), 1e-10, None)
+
+        # Add small epsilon to avoid division by zero
+        total_prob = prob_0 + prob_1 + 1e-10
+
+        # Calculate percentages
+        percent_0 = (prob_0 / total_prob) * 100
+        percent_1 = (prob_1 / total_prob) * 100
+
+        return percent_0, percent_1

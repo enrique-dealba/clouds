@@ -73,6 +73,7 @@ def test_kde_predictor(predictors, sample_regions):
     assert all(p in [0, 1] for p in predictions)
 
 
+# TODO: Measure speed and optimize this, since slow
 def test_get_regions(predictors, sample_image_data):
     """Test region extraction from image."""
     regions = predictors.get_regions(sample_image_data)
@@ -109,6 +110,7 @@ def test_colored_regions(sample_image_data):
     assert colored.dtype == np.uint8
 
 
+# TODO: This is also slow due to get_regions func
 def test_region_consistency(predictors, sample_image_data):
     """Test consistency between regions and predictions."""
     regions = predictors.get_regions(sample_image_data)
@@ -117,6 +119,22 @@ def test_region_consistency(predictors, sample_image_data):
     kde_pred = predictors.predict_kde(regions)
 
     assert len(random_pred) == len(thresh_pred) == len(kde_pred) == len(regions)
+
+
+def test_kde_predictor_edge_cases(predictors):
+    """Test KDE predictions with edge cases."""
+    # Test with extreme values
+    edge_regions = {
+        1: [float("inf")] * 100,  # Very large values
+        2: [float("-inf")] * 100,  # Very small values
+        3: [0] * 100,  # Zeros
+        4: [3500] * 100,  # Normal values
+    }
+
+    predictions = predictors.predict_kde(edge_regions)
+    assert len(predictions) == len(edge_regions)
+    assert all(isinstance(p, int) for p in predictions)
+    assert all(p in [0, 1] for p in predictions)
 
 
 def test_visualization_pipeline(sample_image_data, predictors):
