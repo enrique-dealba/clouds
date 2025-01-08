@@ -21,6 +21,12 @@ docker run --gpus all cloudynight:latest train \
 
 ### Streamlit Frontend
 
+1. Cloud Detection
+```bash
+docker run -p 8888:8888 cloudynight:latest detection
+```
+
+2. Masking
 ```bash
 docker run -p 8888:8888 cloudynight:latest streamlit
 ```

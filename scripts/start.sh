@@ -29,6 +29,10 @@ case "$1" in
     diagnostics)
         python /app/scripts/run_diagnostics.py
         ;;
+    detection)
+        shift
+        streamlit run /app/frontend/detection_app.py --server.port 8888 --server.address 0.0.0.0
+        ;;
     streamlit)
         shift
         streamlit run /app/frontend/streamlit_app.py --server.port 8888 --server.address 0.0.0.0

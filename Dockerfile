@@ -24,6 +24,7 @@ COPY cloudynight/ /app/cloudynight/
 COPY scripts/ /app/scripts/
 COPY frontend/ /app/frontend/
 COPY tests/ /app/tests/
+COPY cloudynight/models/kde_models.pkl /app/cloudynight/models/
 
 # Make start.sh executable
 RUN chmod +x /app/scripts/start.sh
