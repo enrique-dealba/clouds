@@ -54,6 +54,44 @@ def predictors(tmp_path):
     return CloudPredictors(str(model_path))
 
 
+def test_actual_kde_models_load():
+    """Test that the current ver of KDE loads correctly."""
+    import os
+
+    from cloudynight.models.predictors import CloudPredictors
+
+    # Get path to the actual models file used in production
+    kde_model_path = os.path.join(
+        os.path.dirname(__file__), "..", "cloudynight", "models", "kde_models.pkl"
+    )
+
+    # Verify file exists
+    assert os.path.exists(
+        kde_model_path
+    ), f"KDE models file not found at {kde_model_path}"
+
+    try:
+        # Attempt to load the models
+        predictors = CloudPredictors(kde_model_path)
+
+        # Verify the required model attributes exist
+        assert hasattr(predictors, "kde_label_0"), "kde_label_0 model not loaded"
+        assert hasattr(predictors, "kde_label_1"), "kde_label_1 model not loaded"
+
+        # Test that the models can actually make predictions
+        test_value = 3300.0
+        percent_0, percent_1 = predictors._get_kde_probability(test_value)
+
+        # Verify the probabilities are valid
+        assert isinstance(percent_0, float), "Invalid probability type for label 0"
+        assert isinstance(percent_1, float), "Invalid probability type for label 1"
+        assert 0 <= percent_0 <= 100, "Invalid probability range for label 0"
+        assert 0 <= percent_1 <= 100, "Invalid probability range for label 1"
+
+    except Exception as e:
+        pytest.fail(f"Failed to load or use KDE models: {str(e)}")
+
+
 def test_random_predictor(predictors, sample_regions):
     """Test random predictor always returns zeros."""
     predictions = predictors.predict_random(sample_regions)
