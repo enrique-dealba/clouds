@@ -1,14 +1,24 @@
 import pickle
 from typing import Dict, List, Tuple
 
+import joblib
 import numpy as np
 
 
 class CloudPredictors:
     def __init__(self, kde_model_path: str):
         """Initialize predictors with pre-trained KDE model."""
-        with open(kde_model_path, "rb") as f:
-            models = pickle.load(f)
+        try:
+            # Try loading with joblib first
+            models = joblib.load(kde_model_path)
+        except Exception:
+            try:
+                # Fallback to pickle with error handling
+                with open(kde_model_path, "rb") as f:
+                    models = pickle.load(f)
+            except Exception as e:
+                raise RuntimeError(f"Failed to load models: {str(e)}")
+
         self.kde_label_0 = models["kde_label_0"]
         self.kde_label_1 = models["kde_label_1"]
 
