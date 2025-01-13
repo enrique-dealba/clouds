@@ -4,6 +4,8 @@ from typing import Dict, List, Tuple, Union
 import joblib
 import numpy as np
 
+from frontend.detection_app import timing_decorator
+
 
 class CloudPredictors:
     def __init__(self, kde_model_path: str):
@@ -54,6 +56,7 @@ class CloudPredictors:
                 region_number += 1
         return regions
 
+    @timing_decorator
     def get_regions(self, image_data: np.ndarray) -> Dict[int, np.ndarray]:
         height, width = image_data.shape
         center_x, center_y = width // 2, height // 2

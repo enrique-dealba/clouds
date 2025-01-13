@@ -1,6 +1,8 @@
 import io
 import json
 import os
+import time
+from functools import wraps
 from typing import List, Optional
 
 import matplotlib.pyplot as plt
@@ -12,6 +14,22 @@ from cloudynight.models.predictors import CloudPredictors
 from cloudynight.visualization.overlay import create_overlay_colors, get_colored_regions
 
 
+def timing_decorator(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        start = time.time()
+        result = func(*args, **kwargs)
+        end = time.time()
+        duration = end - start
+        if "timing_logs" not in st.session_state:
+            st.session_state.timing_logs = []
+        st.session_state.timing_logs.append(f"{func.__name__}: {duration:.2f} seconds")
+        return result
+
+    return wrapper
+
+
+@timing_decorator
 def load_fits_file(uploaded_file) -> Optional[np.ndarray]:
     """Load FITS file and return image data."""
     try:
@@ -44,6 +62,7 @@ def load_fits_file(uploaded_file) -> Optional[np.ndarray]:
         return None
 
 
+@timing_decorator
 def parse_ground_truth(uploaded_file) -> Optional[List[int]]:
     """Parse ground truth labels from uploaded file."""
     try:
@@ -77,6 +96,14 @@ def parse_ground_truth(uploaded_file) -> Optional[List[int]]:
 def main():
     st.title("Cloud Detection")
 
+    # Debug section in sidebar
+    st.sidebar.header("Debug Information")
+    debug_mode = st.sidebar.checkbox("Show Debug Info")
+
+    # Reset timing logs at start of each run
+    if "timing_logs" not in st.session_state:
+        st.session_state.timing_logs = []
+
     # Initialize predictors
     kde_model_path = os.path.join(
         os.path.dirname(__file__), "..", "cloudynight", "models", "kde_models.pkl"
@@ -94,46 +121,95 @@ def main():
         st.info("Please upload a FITS file to begin")
         return
 
-    # Load and process data
-    image_data = load_fits_file(fits_file)
-    if image_data is None:
-        return
+    process_button = st.button("Process Image")
 
-    # Get ground truth if provided
-    ground_truth = None
-    if ground_truth_file:
-        ground_truth = parse_ground_truth(ground_truth_file)
-        if ground_truth is None:
-            return
+    if process_button:
+        st.session_state.timing_logs = []
 
-    # Get regions and predictions
-    regions = predictors.get_regions(image_data)
-    random_pred = predictors.predict_random(regions)
-    thresh_pred = predictors.predict_threshold(regions)
-    kde_pred = predictors.predict_kde(regions)
+        with st.spinner("Processing image..."):
+            start_time = time.time()
 
-    # Create visualizations
-    st.header("Cloud Detection Visualizations")
+            image_data = load_fits_file(fits_file)
+            if image_data is None:
+                return
 
-    fig, axes = plt.subplots(2, 2, figsize=(12, 12))
+            # Get ground truth if provided
+            ground_truth = None
+            if ground_truth_file:
+                ground_truth = parse_ground_truth(ground_truth_file)
+                if ground_truth is None:
+                    return
 
-    # Plot each prediction method
-    predictions = [
-        ("All Clear", random_pred),
-        ("Mean Threshold", thresh_pred),
-        ("KDE", kde_pred),
-        ("Ground Truth", ground_truth if ground_truth else random_pred),
-    ]
+            # Get regions and predictions
+            start_regions = time.time()
+            regions = predictors.get_regions(image_data)
+            st.session_state.timing_logs.append(
+                f"get_regions: {time.time() - start_regions:.2f} seconds"
+            )
 
-    for idx, (title, pred) in enumerate(predictions):
-        row, col = idx // 2, idx % 2
-        colored_image = get_colored_regions(image_data, create_overlay_colors(pred))
-        axes[row, col].imshow(colored_image)
-        axes[row, col].axis("off")
-        axes[row, col].set_title(title)
+            start_random = time.time()
+            random_pred = predictors.predict_random(regions)
+            st.session_state.timing_logs.append(
+                f"predict_random: {time.time() - start_random:.2f} seconds"
+            )
 
-    plt.tight_layout()
-    st.pyplot(fig)
+            start_thresh = time.time()
+            thresh_pred = predictors.predict_threshold(regions)
+            st.session_state.timing_logs.append(
+                f"predict_threshold: {time.time() - start_thresh:.2f} seconds"
+            )
+
+            start_kde = time.time()
+            kde_pred = predictors.predict_kde(regions)
+            st.session_state.timing_logs.append(
+                f"predict_kde: {time.time() - start_kde:.2f} seconds"
+            )
+
+            # Store results in session state
+            st.session_state.image_data = image_data
+            st.session_state.predictions = {
+                "random": random_pred,
+                "threshold": thresh_pred,
+                "kde": kde_pred,
+                "ground_truth": ground_truth if ground_truth else random_pred,
+            }
+
+            total_time = time.time() - start_time
+            st.session_state.timing_logs.append(
+                f"Total processing time: {total_time:.2f} seconds"
+            )
+            st.success("Processing complete!")
+
+    # Display timing information if debug mode is enabled
+    if debug_mode and "timing_logs" in st.session_state:
+        st.sidebar.subheader("Performance Metrics")
+        for log in st.session_state.timing_logs:
+            st.sidebar.text(log)
+
+    # Create visualizations only if we have processed data
+    if "predictions" in st.session_state:
+        st.header("Cloud Detection Visualizations")
+        fig, axes = plt.subplots(2, 2, figsize=(12, 12))
+
+        # Plot each prediction method
+        predictions = [
+            ("All Clear", st.session_state.predictions["random"]),
+            ("Mean Threshold", st.session_state.predictions["threshold"]),
+            ("KDE", st.session_state.predictions["kde"]),
+            ("Ground Truth", st.session_state.predictions["ground_truth"]),
+        ]
+
+        for idx, (title, pred) in enumerate(predictions):
+            row, col = idx // 2, idx % 2
+            colored_image = get_colored_regions(
+                st.session_state.image_data, create_overlay_colors(pred)
+            )
+            axes[row, col].imshow(colored_image)
+            axes[row, col].axis("off")
+            axes[row, col].set_title(title)
+
+        plt.tight_layout()
+        st.pyplot(fig)
 
 
 if __name__ == "__main__":
