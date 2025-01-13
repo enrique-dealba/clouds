@@ -47,30 +47,58 @@ def load_fits_file(uploaded_file) -> Optional[np.ndarray]:
         return None
 
 
+def reorder_ground_truth(labels: List[int]) -> List[int]:
+    """Reorder ground truth labels to match visualization regions."""
+    if len(labels) != 33:
+        return labels
+
+    # Keep the center (first value) as is
+    center = labels[0]
+
+    # Reorder the outer segments
+    outer_segments = labels[1:]
+
+    # Calculate the rotation offset (30 degrees = 1 segment position)
+    segments_per_ring = 8
+    rotation_offset = 1  # Adjust this value based on the actual offset needed
+
+    reordered = [center]  # Start with center
+
+    # Process each ring (4 rings of 8 segments each)
+    for ring in range(4):
+        start_idx = ring * segments_per_ring
+        ring_segments = outer_segments[start_idx : start_idx + segments_per_ring]
+
+        # Rotate segments in this ring
+        rotated_segments = (
+            ring_segments[rotation_offset:] + ring_segments[:rotation_offset]
+        )
+        reordered.extend(rotated_segments)
+
+    return reordered
+
+
 @timing_decorator
 def parse_ground_truth(uploaded_file) -> Optional[List[int]]:
     """Parse ground truth labels from uploaded file."""
     try:
         content = uploaded_file.read().decode()
-
-        # Try JSON format
         try:
             data = json.loads(content)
             if "ground_truth" in data:
                 labels = data["ground_truth"]
             else:
-                labels = data  # In case the JSON is just an array
+                labels = data
         except json.JSONDecodeError:
             labels = eval(content)
 
-        # Convert to list if needed
         labels = list(labels)
-
-        # Validate labels
         if not labels or not all(label in [0, 1] for label in labels):
             st.error("Ground truth must contain only 0s and 1s")
             return None
 
+        # Reorder the ground truth to match visualization
+        labels = reorder_ground_truth(labels)
         return labels
 
     except Exception as e:
