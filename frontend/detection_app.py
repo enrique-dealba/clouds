@@ -2,7 +2,6 @@ import io
 import json
 import os
 import time
-from functools import wraps
 from typing import List, Optional
 
 import matplotlib.pyplot as plt
@@ -11,22 +10,8 @@ import streamlit as st
 from astropy.io import fits
 
 from cloudynight.models.predictors import CloudPredictors
+from cloudynight.utils import timing_decorator
 from cloudynight.visualization.overlay import create_overlay_colors, get_colored_regions
-
-
-def timing_decorator(func):
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        start = time.time()
-        result = func(*args, **kwargs)
-        end = time.time()
-        duration = end - start
-        if "timing_logs" not in st.session_state:
-            st.session_state.timing_logs = []
-        st.session_state.timing_logs.append(f"{func.__name__}: {duration:.2f} seconds")
-        return result
-
-    return wrapper
 
 
 @timing_decorator

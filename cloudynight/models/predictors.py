@@ -4,7 +4,7 @@ from typing import Dict, List, Tuple, Union
 import joblib
 import numpy as np
 
-from frontend.detection_app import timing_decorator
+from cloudynight.utils import timing_decorator
 
 
 class CloudPredictors:
@@ -140,6 +140,7 @@ class CloudPredictors:
             predictions.append(1 if np.mean(region) > threshold else 0)
         return predictions
 
+    @timing_decorator
     def predict_kde(
         self, regions: Dict[int, Union[List[float], np.ndarray]]
     ) -> List[int]:
