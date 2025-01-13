@@ -1,5 +1,5 @@
 import pickle
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Union
 
 import joblib
 import numpy as np
@@ -127,18 +127,22 @@ class CloudPredictors:
         return [0] * len(regions)
 
     def predict_threshold(
-        self, regions: Dict[int, List[float]], threshold: float = 3300
+        self,
+        regions: Dict[int, Union[List[float], np.ndarray]],
+        threshold: float = 3300,
     ) -> List[int]:
         """Generate predictions using threshold method."""
         predictions = []
-        for region_num, region in regions.items():
+        for _, region in regions.items():
             predictions.append(1 if np.mean(region) > threshold else 0)
         return predictions
 
-    def predict_kde(self, regions: Dict[int, List[float]]) -> List[int]:
+    def predict_kde(
+        self, regions: Dict[int, Union[List[float], np.ndarray]]
+    ) -> List[int]:
         """Generate predictions using KDE method."""
         predictions = []
-        for region_num, region in regions.items():
+        for _, region in regions.items():
             percent_0, percent_1 = self._get_kde_probability(np.mean(region))
             predictions.append(1 if percent_1 > percent_0 else 0)
         return predictions

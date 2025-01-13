@@ -118,7 +118,7 @@ def test_get_regions(predictors, sample_image_data):
     """Test region extraction from image."""
     regions = predictors.get_regions(sample_image_data)
     assert len(regions) == 33  # Expected number of regions
-    assert all(isinstance(v, list) for v in regions.values())
+    assert all(isinstance(v, np.ndarray) for v in regions.values())
     assert all(all(isinstance(x, (int, float)) for x in v) for v in regions.values())
 
 
