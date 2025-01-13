@@ -17,14 +17,29 @@ def load_fits_file(uploaded_file) -> Optional[np.ndarray]:
         file_bytes = uploaded_file.read()
         file_buffer = io.BytesIO(file_bytes)
 
-        with fits.open(file_buffer) as hdul:
-            data = hdul[0].data.astype(np.float64)
+        with fits.open(file_buffer, ignore_missing_simple=True) as hdul:
+            st.sidebar.write(f"Number of HDUs: {len(hdul)}")
+            st.sidebar.write(f"Available HDU names: {[h.name for h in hdul]}")
+
+            # Try to get data from first HDU that has data
+            data = None
+            for hdu in hdul:
+                if hasattr(hdu, "data") and hdu.data is not None:
+                    data = hdu.data.astype(np.float64)
+                    break
+
             if data is None or np.all(data == 0):
                 st.error(f"File {uploaded_file.name} appears to be empty")
                 return None
+
+            st.sidebar.write(f"Image shape: {data.shape}")
             return data
+
     except Exception as e:
         st.error(f"Error loading {uploaded_file.name}: {str(e)}")
+        import traceback
+
+        st.sidebar.text(traceback.format_exc())
         return None
 
 
