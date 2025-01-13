@@ -16,6 +16,7 @@ RUN apt-get update && apt-get install -y \
 # Install Python dependencies
 COPY requirements.txt /app/
 RUN pip install --upgrade pip
+RUN pip uninstall -y scikit-learn
 RUN pip install --no-cache-dir -r requirements.txt
 RUN pip install pytest pytest-cov
 

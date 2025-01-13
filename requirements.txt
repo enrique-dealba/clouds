@@ -4,7 +4,7 @@ pandas
 scipy
 matplotlib
 lightgbm
-scikit-learn
+scikit-learn==1.0.2
 sep
 scikit-image
 streamlit
