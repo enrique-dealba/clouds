@@ -47,7 +47,7 @@ def create_overlay_colors(binary_list: List[int]) -> List[List[int]]:
     ]
 
 
-def get_colored_regions(
+def get_colored_regions_prev(
     image_data: np.ndarray, overlay_colors: List[List[int]]
 ) -> np.ndarray:
     """Generate colored overlay regions for visualization."""
@@ -96,6 +96,81 @@ def get_colored_regions(
                 overlay_colors[region_number % len(overlay_colors)], dtype=np.float32
             )
             apply_overlay(coordinates, overlay_color, colored_image)
+            region_number += 1
+
+    return colored_image
+
+
+def get_colored_regions(
+    image_data: np.ndarray, overlay_colors: List[List[int]]
+) -> np.ndarray:
+    """Generate colored overlay regions using vectorized operations."""
+    height, width = image_data.shape
+    center_x, center_y = width // 2, height // 2
+    radii = [height // 10 * i for i in range(1, 6)]
+    radii_sq = [r**2 for r in radii]
+
+    # Normalize image once
+    normalized_image = (
+        (image_data - np.min(image_data))
+        / (np.max(image_data) - np.min(image_data))
+        * 255
+    ).astype(np.uint8)
+
+    # Create base colored image
+    colored_image = np.stack(
+        [normalized_image] * 3 + [np.full_like(normalized_image, 255)], axis=-1
+    )
+
+    # Precompute coordinate grids (similar to get_regions)
+    Y, X = np.ogrid[:height, :width]
+    dx = X - center_x
+    dy = center_y - Y
+    R2 = dx * dx + dy * dy
+    angles = (np.degrees(np.arctan2(dy, dx)) + 360) % 360
+
+    # Convert overlay_colors to numpy array for vectorization
+    overlay_colors = np.array(overlay_colors, dtype=np.float32)
+
+    # Process innermost circle (region 1)
+    mask_region1 = R2 <= radii_sq[0]
+    alpha = overlay_colors[0][3] / 255.0
+    if alpha > 0:  # Only apply if there's any opacity
+        colored_image[mask_region1, :3] = (
+            (1 - alpha) * colored_image[mask_region1, :3]
+            + alpha * overlay_colors[0][:3]
+        ).astype(np.uint8)
+
+    region_number = 1
+    # Process outer rings
+    for i in range(1, len(radii)):
+        inner_r_sq = radii_sq[i - 1]
+        outer_r_sq = radii_sq[i]
+        radial_mask = (R2 > inner_r_sq) & (R2 <= outer_r_sq)
+
+        for j in range(8):
+            start_angle = (90 - j * 45) % 360
+            end_angle = (start_angle - 45) % 360
+            temp_start = end_angle
+            temp_end = start_angle
+
+            if temp_start > temp_end:
+                angle_mask = (angles >= temp_start) | (angles < temp_end)
+            else:
+                angle_mask = (angles >= temp_start) & (angles < temp_end)
+
+            # Combine radial and angular masks
+            mask = radial_mask & angle_mask
+
+            # Apply overlay color using vectorized operations
+            overlay_color = overlay_colors[region_number % len(overlay_colors)]
+            alpha = overlay_color[3] / 255.0
+
+            if alpha > 0:  # Only apply if there's any opacity
+                colored_image[mask, :3] = (
+                    (1 - alpha) * colored_image[mask, :3] + alpha * overlay_color[:3]
+                ).astype(np.uint8)
+
             region_number += 1
 
     return colored_image
