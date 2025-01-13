@@ -54,7 +54,7 @@ class CloudPredictors:
                 region_number += 1
         return regions
 
-    def get_regions(image_data: np.ndarray) -> Dict[int, np.ndarray]:
+    def get_regions(self, image_data: np.ndarray) -> Dict[int, np.ndarray]:
         height, width = image_data.shape
         center_x, center_y = width // 2, height // 2
         radii = [height // 10 * i for i in range(1, 6)]
