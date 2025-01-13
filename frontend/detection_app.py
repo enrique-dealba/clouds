@@ -59,8 +59,7 @@ def reorder_ground_truth(labels: List[int]) -> List[int]:
     outer_segments = labels[1:]
 
     segments_per_ring = 8
-    rotation_offset = 3  # Changed from 1 to 3 (135° shift clockwise)
-    # Each segment is 45°, so 3 segments = 135° rotation
+    rotation_offset = 4  # Increased from 3 to 4 for ~30° more clockwise rotation
 
     reordered = [center]  # Start with center
 
