@@ -59,7 +59,8 @@ def reorder_ground_truth(labels: List[int]) -> List[int]:
     outer_segments = labels[1:]
 
     segments_per_ring = 8
-    rotation_offset = 1
+    rotation_offset = 3  # Changed from 1 to 3 (135° shift clockwise)
+    # Each segment is 45°, so 3 segments = 135° rotation
 
     reordered = [center]  # Start with center
 
@@ -73,7 +74,7 @@ def reorder_ground_truth(labels: List[int]) -> List[int]:
             ring_segments[rotation_offset:] + ring_segments[:rotation_offset]
         )
 
-        # Reverse the segments in the ring to flip direction
+        # Reverse the segments in the ring to maintain left-to-right symmetry
         rotated_segments = rotated_segments[::-1]
 
         reordered.extend(rotated_segments)
