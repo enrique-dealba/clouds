@@ -22,7 +22,7 @@ class CloudPredictors:
         self.kde_label_0 = models["kde_label_0"]
         self.kde_label_1 = models["kde_label_1"]
 
-    def get_regions(self, image_data: np.ndarray) -> Dict[int, List[float]]:
+    def get_regions_prev(self, image_data: np.ndarray) -> Dict[int, List[float]]:
         """Extract region values from image data."""
         height, width = image_data.shape
         center_x, center_y = width // 2, height // 2
@@ -51,6 +51,47 @@ class CloudPredictors:
                     start_angle % 360,
                 )
                 regions[region_number] = segment_values
+                region_number += 1
+        return regions
+
+    def get_regions(image_data: np.ndarray) -> Dict[int, np.ndarray]:
+        height, width = image_data.shape
+        center_x, center_y = width // 2, height // 2
+        radii = [height // 10 * i for i in range(1, 6)]
+        radii_sq = [r**2 for r in radii]
+
+        # Precompute coordinate grids
+        Y, X = np.ogrid[:height, :width]
+        dx = X - center_x
+        dy = center_y - Y
+        R2 = dx * dx + dy * dy
+        angles = (np.degrees(np.arctan2(dy, dx)) + 360) % 360
+
+        regions = {}
+        # Innermost circle
+        mask_region1 = R2 <= radii_sq[0]
+        regions[1] = image_data[mask_region1]
+
+        region_number = 2
+        # Outer rings
+        for i in range(1, len(radii)):
+            inner_r_sq = radii_sq[i - 1]
+            outer_r_sq = radii_sq[i]
+            radial_mask = (R2 > inner_r_sq) & (R2 <= outer_r_sq)
+
+            for j in range(8):
+                start_angle = (90 - j * 45) % 360
+                end_angle = (start_angle - 45) % 360
+                temp_start = end_angle
+                temp_end = start_angle
+
+                if temp_start > temp_end:
+                    angle_mask = (angles >= temp_start) | (angles < temp_end)
+                else:
+                    angle_mask = (angles >= temp_start) & (angles < temp_end)
+
+                mask = radial_mask & angle_mask
+                regions[region_number] = image_data[mask]
                 region_number += 1
         return regions
 
