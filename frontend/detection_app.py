@@ -1,4 +1,5 @@
 import io
+import json
 import os
 from typing import List, Optional
 
@@ -47,11 +48,27 @@ def parse_ground_truth(uploaded_file) -> Optional[List[int]]:
     """Parse ground truth labels from uploaded file."""
     try:
         content = uploaded_file.read().decode()
-        labels = eval(content)  # Warning: Only use with trusted input!
-        if not all(label in [0, 1] for label in labels):
+
+        # Try JSON format
+        try:
+            data = json.loads(content)
+            if "ground_truth" in data:
+                labels = data["ground_truth"]
+            else:
+                labels = data  # In case the JSON is just an array
+        except json.JSONDecodeError:
+            labels = eval(content)
+
+        # Convert to list if needed
+        labels = list(labels)
+
+        # Validate labels
+        if not labels or not all(label in [0, 1] for label in labels):
             st.error("Ground truth must contain only 0s and 1s")
             return None
+
         return labels
+
     except Exception as e:
         st.error(f"Error parsing ground truth file: {str(e)}")
         return None
@@ -70,7 +87,7 @@ def main():
     st.sidebar.header("Upload Files")
     fits_file = st.sidebar.file_uploader("Upload FITS File", type=["fits", "fits.bz2"])
     ground_truth_file = st.sidebar.file_uploader(
-        "Upload Ground Truth (optional)", type=["txt"]
+        "Upload Ground Truth (optional)", type=["txt", "json"]
     )
 
     if not fits_file:
