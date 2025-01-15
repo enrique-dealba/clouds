@@ -6,17 +6,10 @@
 docker build -t cloudynight:latest .
 ```
 
-### Checking GPU etc
+### Checking GPU
 
 ```bash
 docker run --gpus all cloudynight:latest diagnostics
-```
-
-### Training Model
-
-```bash
-docker run --gpus all cloudynight:latest train \
-    --config config/train_config.yaml
 ```
 
 ### Streamlit Frontend
