@@ -174,3 +174,19 @@ def get_colored_regions(
             region_number += 1
 
     return colored_image
+
+
+def plot_with_overlay(
+    image_data: np.ndarray, overlay_colors: List[List[int]], ax
+) -> None:
+    """Plots image with overlay in given matplotlib axis."""
+    # Calculate value ranges
+    vmin, vmax = np.percentile(image_data[~np.isnan(image_data)], (1, 99))
+
+    # Generate overlay
+    overlay = get_colored_regions(image_data, overlay_colors)
+    ax.imshow(image_data, cmap="gray", vmin=vmin, vmax=vmax)
+
+    # Overlay the RGBA image
+    ax.imshow(overlay, alpha=0.99)
+    ax.axis("off")

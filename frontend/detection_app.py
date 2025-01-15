@@ -11,7 +11,7 @@ from astropy.io import fits
 
 from cloudynight.models.predictors import CloudPredictors
 from cloudynight.utils import timing_decorator
-from cloudynight.visualization.overlay import create_overlay_colors, get_colored_regions
+from cloudynight.visualization.overlay import create_overlay_colors, plot_with_overlay
 
 
 @timing_decorator
@@ -196,18 +196,17 @@ def main():
             )
             st.success("Processing complete!")
 
-    # Display timing information if debug mode is enabled
+    # Display timing information if debug mode
     if debug_mode and "timing_logs" in st.session_state:
         st.sidebar.subheader("Performance Metrics")
         for log in st.session_state.timing_logs:
             st.sidebar.text(log)
 
-    # Create visualizations only if we have processed data
     if "predictions" in st.session_state:
         st.header("Cloud Detection Visualizations")
         fig, axes = plt.subplots(2, 2, figsize=(12, 12))
 
-        # Plot each prediction method
+        # Plots each prediction method
         predictions = [
             ("All Clear", st.session_state.predictions["random"]),
             ("Mean Threshold", st.session_state.predictions["threshold"]),
@@ -217,11 +216,10 @@ def main():
 
         for idx, (title, pred) in enumerate(predictions):
             row, col = idx // 2, idx % 2
-            colored_image = get_colored_regions(
-                st.session_state.image_data, create_overlay_colors(pred)
+            overlay_colors = create_overlay_colors(pred)
+            plot_with_overlay(
+                st.session_state.image_data, overlay_colors, axes[row, col]
             )
-            axes[row, col].imshow(colored_image)
-            axes[row, col].axis("off")
             axes[row, col].set_title(title)
 
         plt.tight_layout()
