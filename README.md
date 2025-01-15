@@ -1,4 +1,4 @@
-# Measuring Sky Transparency and Cloud Detection
+# Sky Transparency and Cloud Detection
 
 ### Building the Docker Image
 
