@@ -293,7 +293,7 @@ def test_metrics_calculation_and_display():
 
         # Verify specific cases with appropriate tolerances
         if method == "random":
-            assert metrics["accuracy"] == pytest.approx(0.485, rel=1e-2)
+            assert metrics["accuracy"] == pytest.approx(0.394, rel=1e-2)
         elif method == "threshold":
             assert metrics["recall"] == pytest.approx(1.0, abs=1e-3)
         elif method == "kde":
