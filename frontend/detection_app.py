@@ -131,16 +131,56 @@ def display_metrics_table(
             }
         )
 
-    # Displays df
     df = pd.DataFrame(metrics_data)
-    st.subheader("Detection Metrics")
-    st.dataframe(
+
+    # Table style
+    styled_df = (
         df.style.highlight_max(
             subset=["Accuracy", "Precision", "Recall", "F1 Score"],
             axis=0,
-            props="font-weight: bold;",
+            props="font-weight: bold; background-color: rgba(100, 149, 237, 0.2)",  # Light cornflower blue
+        )
+        .set_properties(
+            **{
+                "font-size": "20px",
+                "text-align": "center",
+                "padding": "10px",
+                "border": "1px solid gray",
+            }
+        )
+        .set_table_styles(
+            [
+                {
+                    "selector": "th",
+                    "props": [
+                        ("font-size", "22px"),
+                        ("font-weight", "bold"),
+                        ("text-align", "center"),
+                        ("padding", "10px"),
+                        ("background-color", "#262730"),
+                    ],
+                },
+                {"selector": "", "props": [("width", "100%")]},
+            ]
         )
     )
+
+    # Display table with custom width
+    st.subheader("Metrics")
+    st.write(
+        """
+        <style>
+            .stDataFrame {
+                width: 100%;
+            }
+            .stDataFrame td {
+                min-width: 150px;
+            }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+    st.dataframe(styled_df, use_container_width=True)
 
 
 def main():
@@ -237,7 +277,6 @@ def main():
             st.sidebar.text(log)
 
     if "predictions" in st.session_state:
-        st.header("Cloud Detection Visualizations")
         fig, axes = plt.subplots(2, 2, figsize=(12, 12))
 
         # Plots each prediction method
