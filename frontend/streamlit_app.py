@@ -204,7 +204,7 @@ def visualize_image(
     vmin, vmax = np.percentile(data[~np.isnan(data)], (1, 99))
 
     # Display image at full size
-    # TODO: (major fix) - fix index font size, tiny, and weird wobbling of plot
+    # TODO: fix index font size, tiny, and weird wobbling of plot
     im = ax.imshow(
         data,
         origin="lower",

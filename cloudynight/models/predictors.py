@@ -48,38 +48,6 @@ class CloudPredictors:
             "kde": self.predict_kde(regions),
         }
 
-    def get_regions_prev(self, image_data: np.ndarray) -> Dict[int, List[float]]:
-        """Extract region values from image data."""
-        height, width = image_data.shape
-        center_x, center_y = width // 2, height // 2
-        radii = [height // 10 * i for i in range(1, 6)]
-
-        regions = {}
-        regions[1] = [
-            image_data[y, x]
-            for y in range(height)
-            for x in range(width)
-            if (x - center_x) ** 2 + (y - center_y) ** 2 <= radii[0] ** 2
-        ]
-
-        region_number = 2
-        for i in range(1, len(radii)):
-            for j in range(8):
-                start_angle = 90 - j * 45
-                end_angle = (start_angle - 45) % 360
-                segment_values = self._get_segment_values(
-                    image_data,
-                    center_x,
-                    center_y,
-                    radii[i - 1],
-                    radii[i],
-                    end_angle % 360,
-                    start_angle % 360,
-                )
-                regions[region_number] = segment_values
-                region_number += 1
-        return regions
-
     @timing_decorator
     def get_regions(self, image_data: np.ndarray) -> Dict[int, np.ndarray]:
         height, width = image_data.shape

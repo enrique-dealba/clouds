@@ -115,7 +115,6 @@ def test_kde_predictor(predictors, sample_regions):
     assert all(p in [0, 1] for p in predictions)
 
 
-# TODO: Measure speed and optimize this, since slow
 def test_get_regions(predictors, sample_image_data):
     """Test region extraction from image."""
     regions = predictors.get_regions(sample_image_data)
@@ -152,7 +151,6 @@ def test_colored_regions(sample_image_data):
     assert colored.dtype == np.uint8
 
 
-# TODO: This is also slow due to get_regions func
 def test_region_consistency(predictors, sample_image_data):
     """Test consistency between regions and predictions."""
     regions = predictors.get_regions(sample_image_data)
