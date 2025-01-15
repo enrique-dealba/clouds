@@ -30,14 +30,14 @@ def get_segment_coordinates(
 def apply_overlay(
     coords: List[Tuple[int, int]], overlay_color: np.ndarray, image: np.ndarray
 ) -> None:
-    """Apply color overlay to specified coordinates."""
+    """Apply overlay color with proper alpha blending."""
     alpha = overlay_color[3] / 255.0
     for y, x in coords:
-        original_pixel = image[y, x, :3].astype(np.float32)
-        image[y, x, :3] = (
-            (1 - alpha) * original_pixel + alpha * overlay_color[:3]
-        ).astype(np.uint8)
-        image[y, x, 3] = 255
+        if 0 <= y < image.shape[0] and 0 <= x < image.shape[1]:
+            image[y, x, :3] = (
+                (1 - alpha) * image[y, x, :3] + alpha * overlay_color[:3]
+            ).astype(np.uint8)
+            image[y, x, 3] = max(image[y, x, 3], overlay_color[3])
 
 
 def create_overlay_colors(binary_list: List[int]) -> List[List[int]]:
@@ -101,7 +101,7 @@ def get_colored_regions_prev(
     return colored_image
 
 
-def get_colored_regions(
+def get_colored_regions_prev_vectorized(
     image_data: np.ndarray, overlay_colors: List[List[int]]
 ) -> np.ndarray:
     """Generate colored overlay regions using vectorized operations."""
@@ -174,6 +174,68 @@ def get_colored_regions(
             region_number += 1
 
     return colored_image
+
+
+def get_colored_regions(
+    image_data: np.ndarray, overlay_colors: List[List[int]]
+) -> np.ndarray:
+    """Generate transparent overlay using vectorized operations."""
+    height, width = image_data.shape
+
+    # Create transparent overlay with vectorized initialization
+    overlay_image = np.zeros((height, width, 4), dtype=np.uint8)
+
+    # Precompute coordinate grids for vectorization
+    Y, X = np.ogrid[:height, :width]
+    center_x, center_y = width // 2, height // 2
+    dx = X - center_x
+    dy = center_y - Y
+    R2 = dx * dx + dy * dy
+    angles = (np.degrees(np.arctan2(dy, dx)) + 360) % 360
+
+    # Precompute radii and squared radii for efficiency
+    radii = [height // 10 * i for i in range(1, 6)]
+    radii_sq = [r**2 for r in radii]
+
+    # Convert overlay_colors to numpy array for vectorization
+    overlay_colors = np.array(overlay_colors, dtype=np.float32)
+
+    # Process innermost circle (region 1) with vectorized mask
+    mask_region1 = R2 <= radii_sq[0]
+    alpha = overlay_colors[0][3] / 255.0
+    if alpha > 0:
+        overlay_image[mask_region1] = overlay_colors[0]
+
+    region_number = 1
+    # Process outer rings with vectorized operations
+    for i in range(1, len(radii)):
+        inner_r_sq = radii_sq[i - 1]
+        outer_r_sq = radii_sq[i]
+        radial_mask = (R2 > inner_r_sq) & (R2 <= outer_r_sq)
+
+        for j in range(8):
+            start_angle = (90 - j * 45) % 360
+            end_angle = (start_angle - 45) % 360
+            temp_start = end_angle
+            temp_end = start_angle
+
+            # Vectorized angle mask
+            if temp_start > temp_end:
+                angle_mask = (angles >= temp_start) | (angles < temp_end)
+            else:
+                angle_mask = (angles >= temp_start) & (angles < temp_end)
+
+            # Combine masks vectorially
+            mask = radial_mask & angle_mask
+
+            # Apply overlay color using vectorized operations
+            overlay_color = overlay_colors[region_number % len(overlay_colors)]
+            if overlay_color[3] > 0:  # Only apply if there's any opacity
+                overlay_image[mask] = overlay_color
+
+            region_number += 1
+
+    return overlay_image
 
 
 def plot_with_overlay(
