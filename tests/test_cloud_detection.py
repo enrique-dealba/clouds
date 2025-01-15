@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pytest
 
-from cloudynight.models.predictors import CloudPredictors
+from cloudynight.models.predictors import CloudPredictors, calculate_metrics
 from cloudynight.visualization.overlay import (
     create_overlay_colors,
     get_colored_regions,
@@ -267,3 +267,35 @@ def test_visualization_pipeline_changes():
     ), "Overlay should have 0.99 alpha in plot"
 
     plt.close(fig)
+
+
+def test_metrics_calculation_and_display():
+    """Test metrics calculation and display functionality."""
+    # Sample data
+    test_ground_truth = [1, 0, 1, 1, 0] * 6 + [1, 0, 1]  # 33 values total
+    test_predictions = {
+        "random": [0] * 33,  # All clear
+        "threshold": [1] * 33,  # All cloudy
+        "kde": test_ground_truth.copy(),  # Perfect prediction
+    }
+
+    # Test metrics calculation for each method
+    for method, preds in test_predictions.items():
+        metrics = calculate_metrics(test_ground_truth, preds)
+
+        assert isinstance(metrics, dict), f"Metrics for {method} should be a dictionary"
+        assert all(
+            key in metrics for key in ["accuracy", "precision", "recall", "f1"]
+        ), f"Missing metrics for {method}"
+        assert all(
+            isinstance(v, float) for v in metrics.values()
+        ), f"Non-float metrics found for {method}"
+
+        # Verify specific cases with appropriate tolerances
+        if method == "random":
+            assert metrics["accuracy"] == pytest.approx(0.485, rel=1e-2)
+        elif method == "threshold":
+            assert metrics["recall"] == pytest.approx(1.0, abs=1e-3)
+        elif method == "kde":
+            assert metrics["accuracy"] == pytest.approx(1.0, abs=1e-3)
+            assert metrics["f1"] == pytest.approx(1.0, abs=1e-3)

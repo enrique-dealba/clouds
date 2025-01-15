@@ -2,14 +2,15 @@ import io
 import json
 import os
 import time
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import streamlit as st
 from astropy.io import fits
 
-from cloudynight.models.predictors import CloudPredictors
+from cloudynight.models.predictors import CloudPredictors, calculate_metrics
 from cloudynight.utils import timing_decorator
 from cloudynight.visualization.overlay import create_overlay_colors, plot_with_overlay
 
@@ -107,6 +108,39 @@ def parse_ground_truth(uploaded_file) -> Optional[List[int]]:
     except Exception as e:
         st.error(f"Error parsing ground truth file: {str(e)}")
         return None
+
+
+def display_metrics_table(
+    predictions: Dict[str, List[int]], ground_truth: Optional[List[int]]
+):
+    """Display metrics table in Streamlit."""
+    if not ground_truth:
+        st.info("No ground truth data available for metrics calculation")
+        return
+
+    metrics_data = []
+    for method, preds in predictions.items():
+        metrics = calculate_metrics(ground_truth, preds)
+        metrics_data.append(
+            {
+                "Method": method.capitalize(),
+                "Accuracy": f"{metrics['accuracy']:.3f}",
+                "Precision": f"{metrics['precision']:.3f}",
+                "Recall": f"{metrics['recall']:.3f}",
+                "F1 Score": f"{metrics['f1']:.3f}",
+            }
+        )
+
+    # Displays df
+    df = pd.DataFrame(metrics_data)
+    st.subheader("Detection Metrics")
+    st.dataframe(
+        df.style.highlight_max(
+            subset=["Accuracy", "Precision", "Recall", "F1 Score"],
+            axis=0,
+            props="font-weight: bold;",
+        )
+    )
 
 
 def main():
@@ -224,6 +258,12 @@ def main():
 
         plt.tight_layout()
         st.pyplot(fig)
+
+    if "predictions" in st.session_state:
+        display_metrics_table(
+            st.session_state.predictions,
+            st.session_state.predictions.get("ground_truth"),
+        )
 
 
 if __name__ == "__main__":

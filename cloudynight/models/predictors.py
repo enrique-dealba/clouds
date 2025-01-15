@@ -3,8 +3,22 @@ from typing import Dict, List, Tuple, Union
 
 import joblib
 import numpy as np
+from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
 
 from cloudynight.utils import timing_decorator
+
+
+def calculate_metrics(y_true: List[int], y_pred: List[int]) -> Dict[str, float]:
+    """Calculates classification metrics."""
+    try:
+        return {
+            "accuracy": accuracy_score(y_true, y_pred),
+            "precision": precision_score(y_true, y_pred, zero_division=0),
+            "recall": recall_score(y_true, y_pred, zero_division=0),
+            "f1": f1_score(y_true, y_pred, zero_division=0),
+        }
+    except Exception:
+        return {"accuracy": 0.0, "precision": 0.0, "recall": 0.0, "f1": 0.0}
 
 
 class CloudPredictors:
@@ -23,6 +37,16 @@ class CloudPredictors:
 
         self.kde_label_0 = models["kde_label_0"]
         self.kde_label_1 = models["kde_label_1"]
+
+    def get_all_predictions(
+        self, regions: Dict[int, np.ndarray]
+    ) -> Dict[str, List[int]]:
+        """Get predictions from all methods."""
+        return {
+            "random": self.predict_random(regions),
+            "threshold": self.predict_threshold(regions),
+            "kde": self.predict_kde(regions),
+        }
 
     def get_regions_prev(self, image_data: np.ndarray) -> Dict[int, List[float]]:
         """Extract region values from image data."""
