@@ -142,7 +142,7 @@ def display_metrics_table(
         )
         .set_properties(
             **{
-                "font-size": "20px",
+                "font-size": "60px",  # prev: 20px
                 "text-align": "center",
                 "padding": "10px",
                 "border": "1px solid gray",
@@ -153,7 +153,7 @@ def display_metrics_table(
                 {
                     "selector": "th",
                     "props": [
-                        ("font-size", "22px"),
+                        ("font-size", "66px"),  # prev: 22px
                         ("font-weight", "bold"),
                         ("text-align", "center"),
                         ("padding", "10px"),
