@@ -1,5 +1,6 @@
 from unittest import mock
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pytest
 
@@ -8,6 +9,7 @@ from cloudynight.visualization.overlay import (
     create_overlay_colors,
     get_colored_regions,
     get_segment_coordinates,
+    plot_with_overlay,
 )
 
 
@@ -219,3 +221,49 @@ def test_visualization_pipeline(sample_image_data, predictors):
     assert colored.shape[2] == 4
     assert np.max(colored) <= 255
     assert np.min(colored) >= 0
+
+
+def test_visualization_pipeline_changes():
+    """Test that visualization changes produce expected output format and properties."""
+    image_data = np.zeros((500, 500))  # Base image
+    # Adds gaussian blob in center
+    y, x = np.ogrid[-250:250, -250:250]
+    mask = x * x + y * y <= 200 * 200
+    image_data[mask] = 3500
+
+    # Sample predictions (alternating clear/cloudy)
+    test_predictions = [1, 0] * 16 + [1]  # 33 regions total
+
+    # Create figure and axis for testing
+    fig, ax = plt.subplots()
+
+    # Generate overlay colors
+    overlay_colors = create_overlay_colors(test_predictions)
+
+    # Get overlay
+    overlay = get_colored_regions(image_data, overlay_colors)
+
+    # Test overlay properties
+    assert overlay.shape == (
+        *image_data.shape,
+        4,
+    ), "Overlay should be RGBA with same dimensions as input"
+    assert overlay.dtype == np.uint8, "Overlay should be 8-bit unsigned integers"
+    assert np.all(overlay[..., 3] <= 64), "Alpha channel should not exceed 64"
+
+    # Test plotting
+    plot_with_overlay(image_data, overlay_colors, ax)
+
+    # Get the plotted images from the axis
+    plotted_images = ax.get_images()
+    assert (
+        len(plotted_images) == 2
+    ), "Should have exactly 2 image layers (base + overlay)"
+    assert (
+        plotted_images[0].get_cmap().name == "gray"
+    ), "Base image should use gray colormap"
+    assert (
+        plotted_images[1].get_alpha() == 0.99
+    ), "Overlay should have 0.99 alpha in plot"
+
+    plt.close(fig)
