@@ -56,7 +56,7 @@ def reorder_ground_truth(labels: List[int]) -> List[int]:
     # Keep the center (first value) as is
     center = labels[0]
 
-    # Reorder the outer segments
+    # Reorder outer segments
     outer_segments = labels[1:]
 
     segments_per_ring = 8
@@ -64,7 +64,7 @@ def reorder_ground_truth(labels: List[int]) -> List[int]:
 
     reordered = [center]  # Start with center
 
-    # Process each ring (4 rings of 8 segments each)
+    # Process each ring (4 rings, 8 segments each)
     for ring in range(4):
         start_idx = ring * segments_per_ring
         ring_segments = outer_segments[start_idx : start_idx + segments_per_ring]
@@ -74,7 +74,7 @@ def reorder_ground_truth(labels: List[int]) -> List[int]:
             ring_segments[rotation_offset:] + ring_segments[:rotation_offset]
         )
 
-        # Reverse the segments in the ring to maintain left-to-right symmetry
+        # Reverse the segments to reverse symmetry (left-right symmetry)
         rotated_segments = rotated_segments[::-1]
 
         reordered.extend(rotated_segments)
@@ -101,7 +101,7 @@ def parse_ground_truth(uploaded_file) -> Optional[List[int]]:
             st.error("Ground truth must contain only 0s and 1s")
             return None
 
-        # Reorder the ground truth to match visualization
+        # Reorder ground truth to match other sectors
         labels = reorder_ground_truth(labels)
         return labels
 
@@ -138,7 +138,7 @@ def display_metrics_table(
         df.style.highlight_max(
             subset=["Accuracy", "Precision", "Recall", "F1 Score"],
             axis=0,
-            props="font-weight: bold; background-color: rgba(100, 149, 237, 0.2)",  # Light cornflower blue
+            props="font-weight: bold; background-color: rgba(100, 149, 237, 0.2)",
         )
         .set_properties(
             **{
@@ -268,7 +268,7 @@ def main():
             st.session_state.timing_logs.append(
                 f"Total processing time: {total_time:.2f} seconds"
             )
-            st.success("Processing complete!")
+            st.success("Done!")
 
     # Display timing information if debug mode
     if debug_mode and "timing_logs" in st.session_state:
@@ -306,7 +306,5 @@ def main():
 
 
 if __name__ == "__main__":
-    st.set_page_config(
-        page_title="Cloud Detection Visualization", page_icon="☁️", layout="wide"
-    )
+    st.set_page_config(page_title="Cloud Detection", page_icon="☁️", layout="wide")
     main()

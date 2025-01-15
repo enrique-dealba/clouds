@@ -33,7 +33,6 @@ class ImageProcessor:
 
                 file_bytes = bz2.decompress(file_bytes)
 
-            # Create file-like object in memory
             file_buffer = io.BytesIO(file_bytes)
 
             with fits.open(file_buffer) as hdul:
@@ -50,7 +49,6 @@ class ImageProcessor:
             st.error(f"Error loading {uploaded_file.name}: {str(e)}")
             return None, None
         finally:
-            # Reset the file buffer for potential reuse
             if "file_buffer" in locals():
                 file_buffer.close()
 
@@ -83,13 +81,13 @@ class ImageProcessor:
                     header=header,
                 )
                 try:
-                    # If we have a mask, resize to match mask dimensions
+                    # If we have a mask, resize to match mask dims
                     if self.mask is not None:
                         img.resize_to_mask(self.mask.data.shape)
                     else:
                         img.crop_image()
 
-                    # Set the expected shape based on the first valid image
+                    # Set expected shape based on first valid image
                     if expected_shape is None:
                         expected_shape = img.data.shape
                     else:
@@ -108,7 +106,7 @@ class ImageProcessor:
         return images
 
     def generate_mask(self, images: List[AllskyImage]) -> Optional[AllskyImage]:
-        """Generate mask from multiple images."""
+        """Generate mask from mutliple images."""
         self.camera.imgdata = images
         try:
             mask = self.camera.generate_mask(
@@ -131,7 +129,7 @@ class ImageProcessor:
             return False
 
         try:
-            # Ensure dimensions match before proceeding
+            # Dims match before proceeding
             if not self.ensure_dimensions_match():
                 return False
 
@@ -142,12 +140,11 @@ class ImageProcessor:
             num_regions = self.camera.generate_subregions()
             st.success(f"Successfully created {num_regions} subregions")
 
-            # Validate subregions were created properly
+            # Validate subregions
             if not self.camera.subregions.any():
                 st.warning("Subregions were created but appear to be empty")
                 return False
 
-            # Share subregions with current image
             if self.current_image is not None:
                 self.current_image.subregions = self.camera.subregions
 
@@ -162,7 +159,7 @@ class ImageProcessor:
             return False
 
     def extract_features(self, image: AllskyImage) -> Optional[pd.DataFrame]:
-        """Extract features from an image using generated subregions."""
+        """Extracts features from image using generated subregions."""
         try:
             self.camera.imgdata = [image]
             self.camera.extract_features(self.camera.subregions, mask=self.mask.data)
@@ -189,12 +186,11 @@ def visualize_image(
     overlay_cmap: str = "Oranges",
 ) -> io.BytesIO:
     """Create visualization of image data with proper sizing."""
-    # Get dimensions
     height, width = data.shape
 
     # Calculate figure size in inches - using larger scale factor
-    dpi = 100  # Standard screen DPI
-    figsize = (width / dpi * 2, height / dpi * 2)  # Double the default size
+    dpi = 100
+    figsize = (width / dpi * 2, height / dpi * 2)  # Double default size
 
     # Create figure with explicit size
     fig = plt.figure(figsize=figsize, dpi=dpi)
@@ -263,14 +259,13 @@ def main():
         st.error("No valid images found in uploaded files")
         return
 
-    # Set current image
     processor.current_image = images[0]  # Set to first valid image
 
-    # Display sample image
     st.header("Sample Image")
     sample_buf = visualize_image(images[0].data, "Sample Original Image")
-    # Use full width and don't let Streamlit resize
-    st.image(sample_buf, use_container_width=True)
+    st.image(
+        sample_buf, use_container_width=True
+    )  # Use full width, don't let Streamlit resize
 
     # Mask Generation
     st.header("1. Mask Generation")
@@ -323,6 +318,6 @@ def main():
 
 if __name__ == "__main__":
     st.set_page_config(
-        page_title="Cloud Detection System", page_icon="☁️", layout="wide"
+        page_title="Cloud Detection Testing", page_icon="☁️", layout="wide"
     )
     main()

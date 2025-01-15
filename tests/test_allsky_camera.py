@@ -40,25 +40,19 @@ def test_camera_process_mismatched_images(
     """Test camera processing with mismatched image and mask dimensions"""
     # Create larger image
     large_image = AllskyImage(
-        filename="0001.fits",  # Use a proper numbered filename
+        filename="0001.fits",  # Use properly formatted filename
         data=large_sample_fits_info[1],
         header=large_sample_fits_info[2],
     )
 
-    # Set mask
     sample_camera.maskdata = AllskyImage(
         filename="mask", data=mask_fits_info[1], header=mask_fits_info[2]
     )
 
-    # Generate subregions before processing
     sample_camera.generate_subregions()
-
-    # Set image data
     sample_camera.imgdata = [large_image]
-
-    # Process data
     file_idx = sample_camera.process_and_upload_data(no_upload=True)
 
-    # Verify processed image matches mask dimensions
+    # Check img matches mask dims
     assert sample_camera.imgdata[0].data.shape == sample_camera.maskdata.data.shape
-    assert file_idx == 1  # Verify the file index was properly extracted
+    assert file_idx == 1

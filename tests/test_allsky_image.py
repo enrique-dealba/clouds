@@ -25,7 +25,7 @@ def test_mask_info(mask_fits_info):
     print(f"Unique values: {np.unique(data)}")  # Should be [0, 1]
     assert data is not None
     assert len(info["shape"]) == 2  # Ensure 2D mask
-    assert np.all(np.unique(data) == np.array([0, 1]))  # Binary mask
+    assert np.all(np.unique(data) == np.array([0, 1]))
 
 
 def test_image_dimensions_after_crop(sample_image, sample_fits_info):
@@ -59,7 +59,7 @@ def test_create_overlay_dimensions(sample_image, sample_subregions):
 
 def test_resize_to_mask_larger_image(sample_image, mask_fits_info):
     """Test resizing when image is larger than mask"""
-    # Make image larger than mask
+    # Make img larger than mask
     sample_image.data = np.pad(sample_image.data, ((0, 100), (0, 100)), mode="constant")
     original_shape = sample_image.data.shape
     mask_shape = mask_fits_info[0]["shape"]
@@ -73,7 +73,7 @@ def test_resize_to_mask_larger_image(sample_image, mask_fits_info):
 
 def test_resize_to_mask_smaller_image(sample_image, mask_fits_info):
     """Test that error is raised when image is smaller than mask"""
-    # Make image smaller than mask
+    # Make img smaller than mask
     sample_image.data = sample_image.data[:-100, :-100]
     mask_shape = mask_fits_info[0]["shape"]
 
@@ -85,7 +85,7 @@ def test_resize_to_mask_smaller_image(sample_image, mask_fits_info):
 
 def test_apply_mask_dimension_mismatch(sample_image, mask_fits_info):
     """Test applying mask with different dimensions"""
-    # Make image larger than mask
+    # Make img larger than mask
     sample_image.data = np.pad(sample_image.data, ((0, 100), (0, 100)), mode="constant")
     original_shape = sample_image.data.shape
 
@@ -133,16 +133,17 @@ def test_resize_to_mask_centers_properly(sample_image, mask_fits_info):
     # Make image larger with distinct values
     larger_shape = (sample_image.data.shape[0] + 200, sample_image.data.shape[1] + 200)
     larger_data = np.zeros(larger_shape)
-    # Put a recognizable pattern in the center
+
     center_y = larger_shape[0] // 2
     center_x = larger_shape[1] // 2
-    larger_data[center_y, center_x] = 100  # Distinctive center value
+    larger_data[center_y, center_x] = 100  # Distinct center value
     sample_image.data = larger_data
 
     mask_shape = mask_fits_info[0]["shape"]
     sample_image.resize_to_mask(mask_shape)
 
-    # Check if center pixel is preserved
     new_center_y = sample_image.data.shape[0] // 2
     new_center_x = sample_image.data.shape[1] // 2
-    assert sample_image.data[new_center_y, new_center_x] == 100
+    assert (
+        sample_image.data[new_center_y, new_center_x] == 100
+    )  # Check distinct center value

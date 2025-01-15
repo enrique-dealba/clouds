@@ -80,11 +80,10 @@ def test_actual_kde_models_load():
         assert hasattr(predictors, "kde_label_0"), "kde_label_0 model not loaded"
         assert hasattr(predictors, "kde_label_1"), "kde_label_1 model not loaded"
 
-        # Test that the models can actually make predictions
         test_value = 3300.0
         percent_0, percent_1 = predictors._get_kde_probability(test_value)
 
-        # Verify the probabilities are valid
+        # Check the probs are valid
         assert isinstance(percent_0, float), "Invalid probability type for label 0"
         assert isinstance(percent_1, float), "Invalid probability type for label 1"
         assert 0 <= percent_0 <= 100, "Invalid probability range for label 0"
@@ -116,9 +115,9 @@ def test_kde_predictor(predictors, sample_regions):
 
 
 def test_get_regions(predictors, sample_image_data):
-    """Test region extraction from image."""
+    """Test region extraction from img."""
     regions = predictors.get_regions(sample_image_data)
-    assert len(regions) == 33  # Expected number of regions
+    assert len(regions) == 33  # Expected num of regions
     assert all(isinstance(v, np.ndarray) for v in regions.values())
     assert all(all(isinstance(x, (int, float)) for x in v) for v in regions.values())
 
@@ -163,13 +162,12 @@ def test_region_consistency(predictors, sample_image_data):
 
 def test_kde_predictor_inf_values(predictors):
     """Test KDE predictions with positive and negative infinity."""
-    # Define edge regions with positive and negative infinity
+    # Define edge regions with positive and negative infty
     edge_regions = {
-        "positive_inf": [float("inf")] * 100,  # Very large values (positive infinity)
-        "negative_inf": [float("-inf")] * 100,  # Very small values (negative infinity)
+        "positive_inf": [float("inf")] * 100,  # (positive infty)
+        "negative_inf": [float("-inf")] * 100,  # (negative infty)
     }
 
-    # Mock warnings and logging to prevent cluttering test output
     with mock.patch("warnings.warn") as mock_warn, mock.patch(
         "logging.error"
     ) as mock_error:
@@ -207,11 +205,10 @@ def test_kde_predictor_inf_values(predictors):
 
 def test_visualization_pipeline(sample_image_data, predictors):
     """Test full visualization pipeline."""
-    # Get predictions
     regions = predictors.get_regions(sample_image_data)
     predictions = predictors.predict_threshold(regions)
 
-    # Create visualization
+    # Creates visualization
     overlay_colors = create_overlay_colors(predictions)
     colored = get_colored_regions(sample_image_data, overlay_colors)
 
@@ -235,13 +232,10 @@ def test_visualization_pipeline_changes():
     # Create figure and axis for testing
     fig, ax = plt.subplots()
 
-    # Generate overlay colors
     overlay_colors = create_overlay_colors(test_predictions)
-
-    # Get overlay
     overlay = get_colored_regions(image_data, overlay_colors)
 
-    # Test overlay properties
+    # Test overlay
     assert overlay.shape == (
         *image_data.shape,
         4,
@@ -249,11 +243,9 @@ def test_visualization_pipeline_changes():
     assert overlay.dtype == np.uint8, "Overlay should be 8-bit unsigned integers"
     assert np.all(overlay[..., 3] <= 64), "Alpha channel should not exceed 64"
 
-    # Test plotting
     plot_with_overlay(image_data, overlay_colors, ax)
-
-    # Get the plotted images from the axis
     plotted_images = ax.get_images()
+
     assert (
         len(plotted_images) == 2
     ), "Should have exactly 2 image layers (base + overlay)"
@@ -289,7 +281,7 @@ def test_metrics_calculation_and_display():
             isinstance(v, float) for v in metrics.values()
         ), f"Non-float metrics found for {method}"
 
-        # Verify specific cases with appropriate tolerances
+        # Verify specific cases with appropriate error tolerances
         if method == "random":
             assert metrics["accuracy"] == pytest.approx(0.394, rel=1e-2)
         elif method == "threshold":
